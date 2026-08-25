@@ -1,0 +1,66 @@
+
+import { Customer } from "../model/Customer.js";
+import type {
+  CreateCustomerInput,
+  UpdateCustomerInput,
+} from "../validators/customer.validator.js";
+
+export async function createCustomer(
+  userId: string,
+  input: CreateCustomerInput
+) {
+  const customer = await Customer.create({
+    userId,
+    name: input.name,
+    phone: input.phone,
+    address: input.address,
+  });
+
+  return customer;
+}
+
+export async function getCustomers(userId: string) {
+  return Customer.find({ userId })
+    .sort({ createdAt: -1 })
+    .select("-__v");
+}
+
+export async function getCustomerById(
+  userId: string,
+  customerId: string
+) {
+  return Customer.findOne({
+    _id: customerId,
+    userId,
+  }).select("-__v");
+}
+
+export async function updateCustomer(
+  userId: string,
+  customerId: string,
+  input: UpdateCustomerInput
+) {
+  return Customer.findOneAndUpdate(
+    {
+      _id: customerId,
+      userId,
+    },
+    {
+      $set: input,
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  ).select("-__v");
+}
+
+export async function deleteCustomer(
+  userId: string,
+  customerId: string
+) {
+  return Customer.findOneAndDelete({
+    _id: customerId,
+    userId,
+  });
+}
