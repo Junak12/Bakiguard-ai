@@ -9,6 +9,21 @@ export async function createCustomer(
   userId: string,
   input: CreateCustomerInput
 ) {
+  const existingCustomer = await Customer.findOne({
+    userId,
+    phone: input.phone,
+  });
+
+  if (existingCustomer) {
+    const error = new Error(
+      "A customer with this phone number already exists."
+    );
+
+    (error as any).statusCode = 409;
+
+    throw error;
+  }
+
   const customer = await Customer.create({
     userId,
     name: input.name,
@@ -29,10 +44,18 @@ export async function getCustomerById(
   userId: string,
   customerId: string
 ) {
-  return Customer.findOne({
+  const customer = await Customer.findOne({
     _id: customerId,
     userId,
   }).select("-__v");
+
+  if (!customer) {
+    const error = new Error("Customer not found.");
+    (error as any).statusCode = 404;
+    throw error;
+  }
+
+  return customer;
 }
 
 export async function updateCustomer(

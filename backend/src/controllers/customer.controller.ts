@@ -48,8 +48,24 @@ export async function create(
       message: "Customer created successfully",
       data: customer,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
+
+    if (error.statusCode === 409) {
+      return res.status(409).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    // MongoDB duplicate-key protection
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "A customer with this phone number already exists.",
+      });
+    }
 
     return res.status(500).json({
       success: false,

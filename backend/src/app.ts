@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.routes.js";
 import customerRoutes from "./routes/customer.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes";
+
 const app = express();
 
 const frontendUrl =
@@ -33,7 +34,10 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/customers", customerRoutes);
-app.use("/api/transactions", transactionRoutes);
+app.use(
+  "/api/transactions",
+  transactionRoutes
+);
 app.use("/api/dashboard", dashboardRoutes);
 
 export default app;

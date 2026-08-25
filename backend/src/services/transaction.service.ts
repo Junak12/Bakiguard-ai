@@ -1,42 +1,84 @@
 import mongoose from "mongoose";
-
-
-
-import type { CreateTransactionInput } from "../validators/transaction.validator.js";
-import { Customer } from "../model/Customer.js";
-import { Transaction } from "../model/Transaction.js";
+import type { CreateTransactionInput } from "../validators/transaction.validator";
+import { Customer } from "../model/Customer";
+import { Transaction } from "../model/Transaction";
 
 export async function createTransaction(
   userId: string,
   input: CreateTransactionInput
 ) {
-  const customer = await Customer.findOne({
-    _id: input.customerId,
-    userId,
-  });
+  const session = await mongoose.startSession();
 
-  if (!customer) {
-    throw new Error("Customer not found");
+  try {
+    session.startTransaction();
+
+    const customer = await Customer.findOne({
+      _id: input.customerId,
+      userId,
+    }).session(session);
+
+    if (!customer) {
+      const error = new Error(
+        "Customer not found."
+      );
+
+      (error as any).statusCode = 404;
+
+      throw error;
+    }
+
+    if (
+      input.type === "PAYMENT" &&
+      input.amount > customer.totalDue
+    ) {
+      const error = new Error(
+        "Payment cannot be greater than the current Baki."
+      );
+
+      (error as any).statusCode = 400;
+
+      throw error;
+    }
+
+    const transaction =
+      await Transaction.create(
+        [
+          {
+            userId,
+            customerId: customer._id,
+            type: input.type,
+            amount: input.amount,
+            description: input.description,
+          },
+        ],
+        { session }
+      );
+
+    if (input.type === "CREDIT") {
+      customer.totalDue += input.amount;
+    } else {
+      customer.totalDue -= input.amount;
+    }
+
+    await customer.save({ session });
+
+    await session.commitTransaction();
+
+    return transaction[0];
+  } catch (error) {
+    await session.abortTransaction();
+
+    throw error;
+  } finally {
+    await session.endSession();
   }
-
-  const transaction = await Transaction.create({
-    userId,
-    customerId: input.customerId,
-    type: input.type,
-    amount: input.amount,
-    description: input.description,
-    transactionDate: input.transactionDate
-      ? new Date(input.transactionDate)
-      : new Date(),
-  });
-
-  return transaction;
 }
-
 
 export async function getCustomerTransactions(
   userId: string,
-  customerId: string
+  customerId: string,
+  page: number,
+  limit: number
 ) {
   const customer = await Customer.findOne({
     _id: customerId,
@@ -44,64 +86,37 @@ export async function getCustomerTransactions(
   });
 
   if (!customer) {
-    throw new Error("Customer not found");
+    const error = new Error("Customer not found.");
+    (error as any).statusCode = 404;
+    throw error;
   }
 
-  return Transaction.find({
-    userId,
-    customerId,
-  }).sort({
-    transactionDate: -1,
-  });
-}
+  const skip = (page - 1) * limit;
 
+  const [transactions, total] = await Promise.all([
+    Transaction.find({
+      userId,
+      customerId,
+    })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .select("-__v")
+      .lean(),
 
-export async function getCustomerBalance(
-  userId: string,
-  customerId: string
-) {
-  const customer = await Customer.findOne({
-    _id: customerId,
-    userId,
-  });
-
-  if (!customer) {
-    throw new Error("Customer not found");
-  }
-
-  const result = await Transaction.aggregate([
-    {
-      $match: {
-        userId: new mongoose.Types.ObjectId(userId),
-        customerId: new mongoose.Types.ObjectId(customerId),
-      },
-    },
-    {
-      $group: {
-        _id: "$type",
-        total: {
-          $sum: "$amount",
-        },
-      },
-    },
+    Transaction.countDocuments({
+      userId,
+      customerId,
+    }),
   ]);
 
-  let credit = 0;
-  let payment = 0;
-
-  for (const item of result) {
-    if (item._id === "CREDIT") {
-      credit = item.total;
-    }
-
-    if (item._id === "PAYMENT") {
-      payment = item.total;
-    }
-  }
-
   return {
-    credit,
-    payment,
-    due: Math.max(credit - payment, 0),
+    transactions,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
   };
 }

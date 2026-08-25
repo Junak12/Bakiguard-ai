@@ -1,27 +1,26 @@
 import { Router } from "express";
 
-import { authenticate } from "../middleware/auth.middleware.js";
+
 
 import {
   create,
-  getHistory,
-  getBalance,
-} from "../controllers/transaction.controller.js";
+  getCustomerTransactionsController,
+} from "../controllers/transaction.controller";
+import { authenticate } from "../middleware/auth.middleware";
+
 
 const router = Router();
 
-router.use(authenticate);
-
-router.post("/", create);
-
-router.get(
-  "/customer/:customerId",
-  getHistory
+router.post(
+  "/",
+  authenticate,
+  create
 );
 
 router.get(
-  "/customer/:customerId/balance",
-  getBalance
+  "/customer/:customerId",
+  authenticate,
+  getCustomerTransactionsController
 );
 
 export default router;

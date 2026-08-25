@@ -47,6 +47,12 @@ const customerSchema = new Schema<ICustomer>(
   }
 );
 
+// Prevent duplicate phone numbers for the same user
+customerSchema.index(
+  { userId: 1, phone: 1 },
+  { unique: true }
+);
+
 export const Customer = mongoose.model<ICustomer>(
   "Customer",
   customerSchema
