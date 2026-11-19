@@ -9,6 +9,7 @@ import type {
   RegisterInput,
   UpdateProfileInput,
 } from "../validators/auth.validator.js";
+import { verifyGoogleIdToken } from "./google.service.js";
 import { sendOtp, verifyOtp } from "./otp.service.js";
 import { createSession } from "./session.service.js";
 
@@ -25,7 +26,14 @@ interface ClientInfo {
 
 type UserLike = Pick<
   IUser,
-  "name" | "phone" | "email" | "shopName" | "language" | "defaultCreditDays"
+  | "name"
+  | "phone"
+  | "email"
+  | "shopName"
+  | "paymentInfo"
+  | "avatarUrl"
+  | "language"
+  | "defaultCreditDays"
 > & { _id: unknown };
 
 export function toPublicUser(user: UserLike) {
@@ -34,7 +42,9 @@ export function toPublicUser(user: UserLike) {
     name: user.name,
     phone: user.phone ?? null,
     email: user.email ?? null,
+    avatarUrl: user.avatarUrl ?? null,
     shopName: user.shopName ?? null,
+    paymentInfo: user.paymentInfo ?? null,
     language: user.language ?? "bn",
     defaultCreditDays: user.defaultCreditDays ?? 30,
   };
@@ -103,6 +113,55 @@ export async function loginWithCode(input: OtpVerifyInput, client: ClientInfo) {
   const tokens = await issueTokens(String(user!._id), client);
 
   return { user: toPublicUser(user!), isNewUser, ...tokens };
+}
+
+// ============================================================
+// GOOGLE
+// ============================================================
+
+/**
+ * Signs in with a Google ID token. First sign-in creates the account; an
+ * existing email account with the same (Google-verified) address is linked.
+ */
+export async function loginWithGoogle(idToken: string, client: ClientInfo) {
+  const profile = await verifyGoogleIdToken(idToken);
+
+  let user = await User.findOne({ googleId: profile.googleId }).lean();
+  let isNewUser = false;
+
+  if (!user) {
+    user = await User.findOneAndUpdate(
+      { email: profile.email, googleId: { $exists: false } },
+      { $set: { googleId: profile.googleId, avatarUrl: profile.avatarUrl } },
+      { returnDocument: "after" }
+    ).lean();
+  }
+
+  if (!user) {
+    try {
+      user = (
+        await User.create({
+          name: profile.name.slice(0, 50),
+          email: profile.email,
+          googleId: profile.googleId,
+          avatarUrl: profile.avatarUrl,
+        })
+      ).toObject();
+      isNewUser = true;
+    } catch (error) {
+      // Same Google account finishing sign-in twice at once.
+      if ((error as { code?: number }).code !== 11000) throw error;
+      user = await User.findOne({ googleId: profile.googleId }).lean();
+    }
+  }
+
+  if (!user) {
+    throw AppError.conflict("This email is linked to another Google account.", "GOOGLE_CONFLICT");
+  }
+
+  const tokens = await issueTokens(String(user._id), client);
+
+  return { user: toPublicUser(user), isNewUser, ...tokens };
 }
 
 // ============================================================

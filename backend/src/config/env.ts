@@ -52,6 +52,16 @@ const envSchema = z.object({
     .transform((value) => value === "true"),
 
   OTP_TTL_MINUTES: z.coerce.number().int().min(1).max(30).default(5),
+
+  // Phone + OTP login is built but switched off until an SMS provider is chosen.
+  PHONE_LOGIN_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+
+  // OAuth client ID(s) from Google Cloud Console (comma-separated).
+  // Empty disables "Sign in with Google".
+  GOOGLE_CLIENT_ID: z.string().default(""),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -76,6 +86,7 @@ if (
 
 if (
   parsed.data.NODE_ENV === "production" &&
+  parsed.data.PHONE_LOGIN_ENABLED &&
   parsed.data.SMS_PROVIDER === "console" &&
   !parsed.data.ALLOW_CONSOLE_SMS
 ) {
@@ -91,6 +102,9 @@ export const env = {
   ...parsed.data,
   isProduction: parsed.data.NODE_ENV === "production",
   isTest: parsed.data.NODE_ENV === "test",
+  googleClientIds: parsed.data.GOOGLE_CLIENT_ID.split(",")
+    .map((id) => id.trim())
+    .filter(Boolean),
   allowedOrigins: parsed.data.FRONTEND_URL.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),

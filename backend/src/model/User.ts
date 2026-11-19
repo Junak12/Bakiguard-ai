@@ -10,9 +10,16 @@ export interface IUser extends Document {
   /** Primary login: Bangladeshi mobile number, 01XXXXXXXXX. */
   phone?: string;
 
-  /** Legacy login for accounts created before phone OTP. */
+  /** Login email: from Google sign-in, or an older email+password account. */
   email?: string;
   password?: string;
+
+  /** Google account id ("sub"), set when the user signs in with Google. */
+  googleId?: string;
+  avatarUrl?: string;
+
+  /** Shown on reminders and statements, e.g. "bKash: 01712345678". */
+  paymentInfo?: string;
 
   /** Shown to customers in reminders and statements. */
   shopName?: string;
@@ -52,10 +59,25 @@ const userSchema = new Schema<IUser>(
       select: false,
     },
 
+    googleId: {
+      type: String,
+    },
+
+    avatarUrl: {
+      type: String,
+      maxlength: 500,
+    },
+
     shopName: {
       type: String,
       trim: true,
       maxlength: 80,
+    },
+
+    paymentInfo: {
+      type: String,
+      trim: true,
+      maxlength: 120,
     },
 
     language: {
@@ -85,6 +107,11 @@ userSchema.index(
 userSchema.index(
   { email: 1 },
   { unique: true, partialFilterExpression: { email: { $type: "string" } } }
+);
+
+userSchema.index(
+  { googleId: 1 },
+  { unique: true, partialFilterExpression: { googleId: { $type: "string" } } }
 );
 
 export const User = mongoose.model<IUser>("User", userSchema);

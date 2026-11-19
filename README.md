@@ -61,7 +61,10 @@ CI (`.github/workflows/ci.yml`) runs type checks, tests, builds and Docker build
 - **Customers are archived, never deleted**, so ledger history and shop totals stay
   correct. A customer who still owes money cannot be removed.
 - **Phone numbers are normalized** to `01XXXXXXXXX`.
-- **Login is phone + OTP** (6-digit SMS code, stored only as an HMAC, single use,
+- **Login is "Sign in with Google"** for now (backend verifies the Google ID token
+  against `GOOGLE_CLIENT_ID`; an existing email account with the same verified address
+  is linked). **Phone + OTP is built but off** (`PHONE_LOGIN_ENABLED`,
+  `NEXT_PUBLIC_PHONE_LOGIN`): (6-digit SMS code, stored only as an HMAC, single use,
   5 attempts, 60s resend cooldown, 5 codes/hour/number). Email login remains for
   older accounts. SMS goes through a pluggable provider (`backend/src/services/sms/`);
   `console` prints codes to the log for development.

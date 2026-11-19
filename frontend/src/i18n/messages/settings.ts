@@ -3,6 +3,11 @@ import { defineMessages } from "./define";
 export const settings = defineMessages({
   en: {
     title: "Settings",
+    welcomeTitle: "Welcome to BakiGuard!",
+    welcomeText: "Add your shop name and how customers can pay you. They appear on every reminder you send.",
+    paymentInfoLabel: "How customers can pay you",
+    paymentInfoPlaceholder: "e.g. bKash/Nagad: 01712345678",
+    paymentInfoHint: "Added to reminders and statements so customers can pay right away.",
     subtitle: "Your shop details and preferences.",
     profileSection: "Shop profile",
     profileHint: "Your shop name appears on reminders and statements sent to customers.",
@@ -23,6 +28,11 @@ export const settings = defineMessages({
   },
   bn: {
     title: "সেটিংস",
+    welcomeTitle: "বাকিগার্ডে স্বাগতম!",
+    welcomeText: "দোকানের নাম আর কাস্টমাররা কীভাবে টাকা পাঠাবেন তা লিখুন। প্রতিটি রিমাইন্ডারে এগুলো থাকবে।",
+    paymentInfoLabel: "কাস্টমাররা কীভাবে টাকা দেবেন",
+    paymentInfoPlaceholder: "যেমন: বিকাশ/নগদ: ০১৭১২৩৪৫৬৭৮",
+    paymentInfoHint: "রিমাইন্ডার ও হিসাবের লিংকে যোগ হবে, যাতে কাস্টমার সাথে সাথে টাকা পাঠাতে পারেন।",
     subtitle: "আপনার দোকানের তথ্য ও পছন্দসমূহ।",
     profileSection: "দোকানের তথ্য",
     profileHint: "কাস্টমারদের পাঠানো রিমাইন্ডার ও হিসাবে আপনার দোকানের নাম দেখা যাবে।",

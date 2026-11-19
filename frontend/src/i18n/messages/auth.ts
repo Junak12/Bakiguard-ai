@@ -10,6 +10,11 @@ export const auth = defineMessages({
     heroPoint3: "Overdue alerts for every customer",
 
     welcome: "Welcome",
+    googleSubtitle: "Sign in or create your shop's account with Google. No password needed.",
+    googleNotConfigured: "Google sign-in isn't set up yet. Add the Google client ID to the app settings.",
+    googleFailed: "Google sign-in didn't work. Please try again.",
+    signingIn: "Signing in...",
+    or: "or",
     phoneStepTitle: "Log in or sign up",
     phoneStepSubtitle: "Enter your mobile number. We'll text you a 6-digit code.",
     phoneLabel: "Mobile number",
@@ -71,6 +76,11 @@ export const auth = defineMessages({
     heroPoint3: "প্রতিটি কাস্টমারের দেরির সতর্কতা",
 
     welcome: "স্বাগতম",
+    googleSubtitle: "গুগল দিয়ে লগ ইন করুন বা দোকানের নতুন অ্যাকাউন্ট খুলুন। পাসওয়ার্ড লাগবে না।",
+    googleNotConfigured: "গুগল লগ ইন এখনো চালু করা হয়নি। অ্যাপের সেটিংসে গুগল ক্লায়েন্ট আইডি যোগ করুন।",
+    googleFailed: "গুগল দিয়ে লগ ইন হয়নি। আবার চেষ্টা করুন।",
+    signingIn: "লগ ইন হচ্ছে...",
+    or: "অথবা",
     phoneStepTitle: "লগ ইন বা নতুন অ্যাকাউন্ট",
     phoneStepSubtitle: "আপনার মোবাইল নম্বর দিন। আমরা ৬ সংখ্যার একটি কোড পাঠাব।",
     phoneLabel: "মোবাইল নম্বর",

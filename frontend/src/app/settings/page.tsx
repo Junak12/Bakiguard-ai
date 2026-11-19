@@ -32,8 +32,14 @@ function SettingsForm() {
 function SettingsFields({ user }: { user: SessionUser }) {
   const { t } = useI18n();
 
+  // Shown once after first sign-in (?welcome=1). Read on mount: no Suspense needed.
+  const [welcome] = useState(
+    () => typeof window !== "undefined" && window.location.search.includes("welcome=1")
+  );
+
   const [name, setName] = useState(user.name);
   const [shopName, setShopName] = useState(user.shopName ?? "");
+  const [paymentInfo, setPaymentInfo] = useState(user.paymentInfo ?? "");
   const [creditDays, setCreditDays] = useState(String(user.defaultCreditDays));
 
   const [saving, setSaving] = useState(false);
@@ -63,6 +69,7 @@ function SettingsFields({ user }: { user: SessionUser }) {
       const updated = await updateProfile({
         name: name.trim(),
         defaultCreditDays: days,
+        paymentInfo: paymentInfo.trim(),
         ...(shopName.trim() ? { shopName: shopName.trim() } : {}),
       });
 
@@ -81,6 +88,13 @@ function SettingsFields({ user }: { user: SessionUser }) {
 
   return (
     <div className="mx-auto max-w-2xl">
+      {welcome && (
+        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+          <p className="font-bold text-emerald-900">{t("settings.welcomeTitle")}</p>
+          <p className="mt-1 text-sm text-emerald-800">{t("settings.welcomeText")}</p>
+        </div>
+      )}
+
       <h1 className="text-2xl font-bold text-slate-900">{t("settings.title")}</h1>
       <p className="mt-1 text-sm text-slate-500">{t("settings.subtitle")}</p>
 
@@ -122,6 +136,18 @@ function SettingsFields({ user }: { user: SessionUser }) {
               className={inputClass}
             />
           </label>
+
+          <label className="mt-4 block text-sm font-semibold text-slate-700">
+            {t("settings.paymentInfoLabel")}
+            <input
+              value={paymentInfo}
+              onChange={(event) => setPaymentInfo(event.target.value)}
+              placeholder={t("settings.paymentInfoPlaceholder")}
+              maxLength={120}
+              className={inputClass}
+            />
+          </label>
+          <p className="mt-2 text-sm text-slate-500">{t("settings.paymentInfoHint")}</p>
 
           {user.phone && (
             <label className="mt-4 block text-sm font-semibold text-slate-700">

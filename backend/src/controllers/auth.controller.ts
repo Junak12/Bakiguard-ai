@@ -6,6 +6,7 @@ import {
   getUserById,
   loginUser,
   loginWithCode,
+  loginWithGoogle,
   registerUser,
   requestLoginCode,
   updateProfile,
@@ -14,6 +15,7 @@ import { revokeSession, rotateSession } from "../services/session.service.js";
 import { AppError } from "../utils/AppError.js";
 import { generateAccessToken } from "../utils/jwt.js";
 import {
+  googleLoginSchema,
   loginSchema,
   otpRequestSchema,
   otpVerifySchema,
@@ -71,6 +73,24 @@ export async function verifyOtp(req: Request, res: Response) {
 
   const { user, isNewUser, accessToken, refreshToken } = await loginWithCode(
     input,
+    clientInfo(req)
+  );
+
+  setRefreshCookie(res, refreshToken);
+
+  res.status(isNewUser ? 201 : 200).json({
+    success: true,
+    message: isNewUser ? "Account created successfully" : "Login successful",
+    data: { user, accessToken, isNewUser },
+  });
+}
+
+/** "Sign in with Google": exchanges a Google ID token for a BakiGuard session. */
+export async function googleLogin(req: Request, res: Response) {
+  const { credential } = googleLoginSchema.parse(req.body);
+
+  const { user, isNewUser, accessToken, refreshToken } = await loginWithGoogle(
+    credential,
     clientInfo(req)
   );
 

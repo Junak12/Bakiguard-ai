@@ -16,7 +16,9 @@ export interface SessionUser {
   name: string;
   phone: string | null;
   email: string | null;
+  avatarUrl: string | null;
   shopName: string | null;
+  paymentInfo: string | null;
   language: "bn" | "en";
   defaultCreditDays: number;
 }

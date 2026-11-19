@@ -38,6 +38,14 @@ export const otpVerifySchema = z.object({
 });
 
 // ------------------------------------------------------------
+// Google
+// ------------------------------------------------------------
+
+export const googleLoginSchema = z.object({
+  credential: z.string().min(20, "Missing Google credential").max(5000),
+});
+
+// ------------------------------------------------------------
 // Email + password (legacy accounts)
 // ------------------------------------------------------------
 
@@ -66,6 +74,7 @@ export const updateProfileSchema = z
   .object({
     name: nameSchema,
     shopName: shopNameSchema,
+    paymentInfo: z.string().trim().max(120, "Payment info is too long"),
     language: z.enum(LANGUAGES),
     defaultCreditDays: z.number().int().min(1).max(365),
   })
