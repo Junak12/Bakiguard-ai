@@ -1,23 +1,16 @@
-import { Request, Response } from "express";
-import { getDashboardStats } from "../services/dashboard.service";
+import type { Response } from "express";
+
+import { getUserId, type AuthRequest } from "../middleware/auth.middleware.js";
+import { getDashboardStats } from "../services/dashboard.service.js";
 
 export async function getDashboardStatsController(
-  _req: Request,
+  req: AuthRequest,
   res: Response
 ) {
-  try {
-    const stats = await getDashboardStats();
+  const stats = await getDashboardStats(getUserId(req));
 
-    res.status(200).json({
-      success: true,
-      data: stats,
-    });
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to load dashboard statistics",
-    });
-  }
+  res.status(200).json({
+    success: true,
+    data: stats,
+  });
 }

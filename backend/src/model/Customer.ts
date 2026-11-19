@@ -5,7 +5,22 @@ export interface ICustomer extends Document {
   name: string;
   phone: string;
   address?: string;
+
+  /** Current outstanding Baki in whole Taka. Kept in sync by the transaction service. */
   totalDue: number;
+
+  lastCreditAt?: Date;
+  lastPaymentAt?: Date;
+
+  /**
+   * Customers are never hard-deleted: their ledger history must survive.
+   * Archived customers are hidden from lists and free up their phone number.
+   */
+  isArchived: boolean;
+  archivedAt?: Date;
+
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const customerSchema = new Schema<ICustomer>(
@@ -14,7 +29,6 @@ const customerSchema = new Schema<ICustomer>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
 
     name: {
@@ -41,19 +55,35 @@ const customerSchema = new Schema<ICustomer>(
       default: 0,
       min: 0,
     },
+
+    lastCreditAt: Date,
+
+    lastPaymentAt: Date,
+
+    isArchived: {
+      type: Boolean,
+      default: false,
+    },
+
+    archivedAt: Date,
   },
   {
     timestamps: true,
   }
 );
 
-// Prevent duplicate phone numbers for the same user
+// One active customer per phone number per shop.
 customerSchema.index(
   { userId: 1, phone: 1 },
-  { unique: true }
+  {
+    unique: true,
+    partialFilterExpression: { isArchived: false },
+    name: "userId_phone_active_unique",
+  }
 );
 
-export const Customer = mongoose.model<ICustomer>(
-  "Customer",
-  customerSchema
-);
+// Customer list (newest first) and "who owes the most".
+customerSchema.index({ userId: 1, isArchived: 1, createdAt: -1 });
+customerSchema.index({ userId: 1, isArchived: 1, totalDue: -1 });
+
+export const Customer = mongoose.model<ICustomer>("Customer", customerSchema);

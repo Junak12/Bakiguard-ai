@@ -1,126 +1,58 @@
-import { Request, Response } from "express";
+import type { Response } from "express";
 
-;
-
+import { getUserId, type AuthRequest } from "../middleware/auth.middleware.js";
 import {
   createTransaction,
   getCustomerTransactions,
-} from "../services/transaction.service";
+  getTransactions,
+} from "../services/transaction.service.js";
+import {
+  createTransactionSchema,
+  customerIdParamSchema,
+  listTransactionsQuerySchema,
+} from "../validators/transaction.validator.js";
 
-import { AuthRequest } from "../middleware/auth.middleware";
-import { createTransactionSchema } from "../validators/transaction.validator";
+export async function create(req: AuthRequest, res: Response) {
+  const input = createTransactionSchema.parse(req.body);
 
-export async function create(
-  req: AuthRequest,
-  res: Response
-) {
-  try {
-    if (!req.userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
-    }
+  const transaction = await createTransaction(getUserId(req), input);
 
-    const result =
-      createTransactionSchema.safeParse(
-        req.body
-      );
-
-    if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors:
-          result.error.flatten()
-            .fieldErrors,
-      });
-    }
-
-    const transaction =
-      await createTransaction(
-        req.userId,
-        result.data
-      );
-
-    return res.status(201).json({
-      success: true,
-      message:
-        "Transaction created successfully",
-      data: transaction,
-    });
-  } catch (error: any) {
-    console.error(error);
-
-    if (error.statusCode) {
-      return res.status(
-        error.statusCode
-      ).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
+  res.status(201).json({
+    success: true,
+    message: "Transaction recorded successfully",
+    data: transaction,
+  });
 }
 
 export async function getCustomerTransactionsController(
   req: AuthRequest,
   res: Response
 ) {
-  try {
-    if (!req.userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
-    }
+  const { customerId } = customerIdParamSchema.parse(req.params);
+  const pagination = listTransactionsQuerySchema.parse(req.query);
 
-    const { customerId } = req.params;
+  const result = await getCustomerTransactions(
+    getUserId(req),
+    customerId,
+    pagination
+  );
 
-    const page = Math.max(
-      Number(req.query.page) || 1,
-      1
-    );
+  res.status(200).json({
+    success: true,
+    data: result.transactions,
+    summary: result.summary,
+    pagination: result.pagination,
+  });
+}
 
-    const limit = Math.min(
-      Math.max(
-        Number(req.query.limit) || 10,
-        1
-      ),
-      100
-    );
+export async function getTransactionsController(req: AuthRequest, res: Response) {
+  const pagination = listTransactionsQuerySchema.parse(req.query);
 
-    const result =
-      await getCustomerTransactions(
-        req.userId,
-        customerId,
-        page,
-        limit
-      );
+  const result = await getTransactions(getUserId(req), pagination);
 
-    return res.status(200).json({
-      success: true,
-      data: result.transactions,
-      pagination: result.pagination,
-    });
-  } catch (error: any) {
-    console.error(error);
-
-    if (error.statusCode) {
-      return res.status(error.statusCode).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
+  res.status(200).json({
+    success: true,
+    data: result.transactions,
+    pagination: result.pagination,
+  });
 }

@@ -1,127 +1,125 @@
-import { AuthRequest } from "./../middleware/auth.middleware";
-import type { Request, Response } from "express";
+import type { CookieOptions, Request, Response } from "express";
 
+import { env } from "../config/env.js";
+import { getUserId, type AuthRequest } from "../middleware/auth.middleware.js";
+import { getUserById, loginUser, registerUser } from "../services/auth.service.js";
+import { revokeSession, rotateSession } from "../services/session.service.js";
+import { AppError } from "../utils/AppError.js";
+import { generateAccessToken } from "../utils/jwt.js";
 import { loginSchema, registerSchema } from "../validators/auth.validator.js";
-import { loginUser, registerUser } from "../services/auth.service.js";
-import { User } from "../model/User";
 
+export const REFRESH_COOKIE = "bg_refresh";
+
+const refreshCookieOptions: CookieOptions = {
+  httpOnly: true,
+  secure: env.isProduction,
+  sameSite: "lax",
+  path: "/api/auth",
+  maxAge: env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
+};
+
+function clientInfo(req: Request) {
+  return {
+    userAgent: req.get("user-agent"),
+    ip: req.ip,
+  };
+}
+
+function setRefreshCookie(res: Response, token: string) {
+  res.cookie(REFRESH_COOKIE, token, refreshCookieOptions);
+}
+
+function clearRefreshCookie(res: Response) {
+  const { maxAge: _maxAge, ...options } = refreshCookieOptions;
+  res.clearCookie(REFRESH_COOKIE, options);
+}
+
+function readRefreshCookie(req: Request): string | undefined {
+  const value = req.cookies?.[REFRESH_COOKIE];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
 
 export async function register(req: Request, res: Response) {
-  try {
-    const validationResult = registerSchema.safeParse(req.body);
+  const input = registerSchema.parse(req.body);
 
-    if (!validationResult.success) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: validationResult.error.flatten().fieldErrors,
-      });
-    }
+  const { user, accessToken, refreshToken } = await registerUser(
+    input,
+    clientInfo(req)
+  );
 
-    const user = await registerUser(validationResult.data);
+  setRefreshCookie(res, refreshToken);
 
-    return res.status(201).json({
-      success: true,
-      message: "User registered successfully",
-      data: user,
-    });
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message === "User with this email already exists"
-    ) {
-      return res.status(409).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
+  res.status(201).json({
+    success: true,
+    message: "Account created successfully",
+    data: { user, accessToken },
+  });
 }
-
 
 export async function login(req: Request, res: Response) {
-  try {
-    const validationResult = loginSchema.safeParse(req.body);
+  const input = loginSchema.parse(req.body);
 
-    if (!validationResult.success) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: validationResult.error.flatten().fieldErrors,
-      });
-    }
+  const { user, accessToken, refreshToken } = await loginUser(
+    input,
+    clientInfo(req)
+  );
 
-    const result = await loginUser(validationResult.data);
+  setRefreshCookie(res, refreshToken);
 
-    return res.status(200).json({
-      success: true,
-      message: "Login successful",
-      data: result,
-    });
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message === "Invalid email or password"
-    ) {
-      return res.status(401).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
+  res.status(200).json({
+    success: true,
+    message: "Login successful",
+    data: { user, accessToken },
+  });
 }
 
-export async function getMe(
-  req: AuthRequest,
-  res: Response
-) {
+/** Called by the frontend on page load and whenever the access token expires. */
+export async function refresh(req: Request, res: Response) {
+  const token = readRefreshCookie(req);
+
+  if (!token) {
+    throw AppError.unauthorized("Please log in", "SESSION_EXPIRED");
+  }
+
   try {
-    if (!req.userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
-    }
+    const session = await rotateSession(token, clientInfo(req));
+    const user = await getUserById(session.userId);
 
-    const user = await User.findById(req.userId).select(
-      "-password"
-    );
+    setRefreshCookie(res, session.refreshToken);
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
+        user,
+        accessToken: generateAccessToken(session.userId),
       },
     });
   } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+    clearRefreshCookie(res);
+    throw error;
   }
+}
+
+export async function logout(req: Request, res: Response) {
+  const token = readRefreshCookie(req);
+
+  if (token) {
+    await revokeSession(token);
+  }
+
+  clearRefreshCookie(res);
+
+  res.status(200).json({
+    success: true,
+    message: "Logged out",
+  });
+}
+
+export async function getMe(req: AuthRequest, res: Response) {
+  const user = await getUserById(getUserId(req));
+
+  res.status(200).json({
+    success: true,
+    data: user,
+  });
 }

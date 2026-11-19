@@ -1,27 +1,26 @@
 import { z } from "zod";
 
-export const createTransactionSchema =
-  z.object({
-    customerId: z
-      .string()
-      .min(1, "Customer is required"),
+import { TRANSACTION_TYPES } from "../model/Transaction.js";
+import {
+  amountSchema,
+  objectIdSchema,
+  paginationSchema,
+} from "./common.validator.js";
 
-    type: z.enum([
-      "CREDIT",
-      "PAYMENT",
-    ]),
+export const createTransactionSchema = z.object({
+  customerId: objectIdSchema,
 
-    amount: z
-      .number()
-      .positive("Amount must be greater than 0"),
+  type: z.enum(TRANSACTION_TYPES),
 
-    description: z
-      .string()
-      .max(300)
-      .optional(),
-  });
+  amount: amountSchema,
 
-export type CreateTransactionInput =
-  z.infer<
-    typeof createTransactionSchema
-  >;
+  description: z.string().trim().max(300).optional(),
+});
+
+export const customerIdParamSchema = z.object({
+  customerId: objectIdSchema,
+});
+
+export const listTransactionsQuerySchema = paginationSchema;
+
+export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;

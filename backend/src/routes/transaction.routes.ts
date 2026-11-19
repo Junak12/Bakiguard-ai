@@ -1,26 +1,18 @@
 import { Router } from "express";
 
-
-
 import {
   create,
   getCustomerTransactionsController,
-} from "../controllers/transaction.controller";
-import { authenticate } from "../middleware/auth.middleware";
-
+  getTransactionsController,
+} from "../controllers/transaction.controller.js";
+import { authenticate } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
-router.post(
-  "/",
-  authenticate,
-  create
-);
+router.use(authenticate);
 
-router.get(
-  "/customer/:customerId",
-  authenticate,
-  getCustomerTransactionsController
-);
+router.post("/", create);
+router.get("/", getTransactionsController);
+router.get("/customer/:customerId", getCustomerTransactionsController);
 
 export default router;
