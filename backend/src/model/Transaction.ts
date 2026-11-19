@@ -15,6 +15,16 @@ export interface ITransaction extends Document {
 
   description?: string;
 
+  /** CREDIT only: when the customer promised to pay. */
+  dueDate?: Date;
+
+  /**
+   * CREDIT only: the part of this credit not yet paid back.
+   * Payments settle the oldest credits first (FIFO), which is what makes
+   * "how long has this money been owed" (aging) answerable.
+   */
+  outstanding?: number;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,6 +64,13 @@ const transactionSchema = new Schema<ITransaction>(
       trim: true,
       maxlength: 300,
     },
+
+    dueDate: Date,
+
+    outstanding: {
+      type: Number,
+      min: 0,
+    },
   },
   {
     timestamps: true,
@@ -63,6 +80,12 @@ const transactionSchema = new Schema<ITransaction>(
 // Shop-wide history and per-customer history, both newest first.
 transactionSchema.index({ userId: 1, createdAt: -1 });
 transactionSchema.index({ userId: 1, customerId: 1, createdAt: -1 });
+
+// Unpaid credits, for FIFO settlement and aging reports.
+transactionSchema.index(
+  { userId: 1, customerId: 1, createdAt: 1 },
+  { partialFilterExpression: { type: "CREDIT", outstanding: { $gt: 0 } } }
+);
 
 export const Transaction = mongoose.model<ITransaction>(
   "Transaction",

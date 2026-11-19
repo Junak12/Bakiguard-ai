@@ -12,6 +12,9 @@ export interface ICustomer extends Document {
   lastCreditAt?: Date;
   lastPaymentAt?: Date;
 
+  /** Earliest due date among unpaid credits; unset when nothing is owed. */
+  nextDueAt?: Date | null;
+
   /**
    * Customers are never hard-deleted: their ledger history must survive.
    * Archived customers are hidden from lists and free up their phone number.
@@ -60,6 +63,11 @@ const customerSchema = new Schema<ICustomer>(
 
     lastPaymentAt: Date,
 
+    nextDueAt: {
+      type: Date,
+      default: null,
+    },
+
     isArchived: {
       type: Boolean,
       default: false,
@@ -85,5 +93,6 @@ customerSchema.index(
 // Customer list (newest first) and "who owes the most".
 customerSchema.index({ userId: 1, isArchived: 1, createdAt: -1 });
 customerSchema.index({ userId: 1, isArchived: 1, totalDue: -1 });
+customerSchema.index({ userId: 1, isArchived: 1, nextDueAt: 1 });
 
 export const Customer = mongoose.model<ICustomer>("Customer", customerSchema);

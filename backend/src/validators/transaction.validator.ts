@@ -7,15 +7,33 @@ import {
   paginationSchema,
 } from "./common.validator.js";
 
-export const createTransactionSchema = z.object({
-  customerId: objectIdSchema,
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-  type: z.enum(TRANSACTION_TYPES),
+export const createTransactionSchema = z
+  .object({
+    customerId: objectIdSchema,
 
-  amount: amountSchema,
+    type: z.enum(TRANSACTION_TYPES),
 
-  description: z.string().trim().max(300).optional(),
-});
+    amount: amountSchema,
+
+    description: z.string().trim().max(300).optional(),
+
+    // CREDIT only. Defaults to the shop's credit term.
+    dueDate: z.coerce
+      .date({ error: "Invalid due date" })
+      .refine((date) => date.getTime() > Date.now() - DAY_MS, {
+        message: "Due date cannot be in the past",
+      })
+      .refine((date) => date.getTime() < Date.now() + 366 * DAY_MS, {
+        message: "Due date must be within a year",
+      })
+      .optional(),
+  })
+  .refine((value) => value.type === "CREDIT" || value.dueDate === undefined, {
+    message: "Only credit entries have a due date",
+    path: ["dueDate"],
+  });
 
 export const customerIdParamSchema = z.object({
   customerId: objectIdSchema,

@@ -1,5 +1,6 @@
 import { Customer } from "../model/Customer.js";
 import { AppError } from "../utils/AppError.js";
+import { getAgingReport } from "./ledger.service.js";
 import type {
   CreateCustomerInput,
   UpdateCustomerInput,
@@ -43,16 +44,31 @@ export async function createCustomer(userId: string, input: CreateCustomerInput)
   }
 }
 
-export async function getCustomers(userId: string, search?: string) {
+export interface CustomerListOptions {
+  search?: string;
+  /** "overdue": has money past its due date. "due": owes anything. */
+  status?: "all" | "due" | "overdue";
+}
+
+export async function getCustomers(userId: string, options: CustomerListOptions = {}) {
   const filter: Record<string, unknown> = activeCustomer(userId);
 
-  if (search) {
-    const pattern = new RegExp(escapeRegex(search), "i");
+  if (options.search) {
+    const pattern = new RegExp(escapeRegex(options.search), "i");
     filter.$or = [{ name: pattern }, { phone: pattern }];
   }
 
+  if (options.status === "due") {
+    filter.totalDue = { $gt: 0 };
+  }
+
+  if (options.status === "overdue") {
+    filter.nextDueAt = { $ne: null, $lt: new Date() };
+  }
+
   return Customer.find(filter)
-    .sort({ createdAt: -1 })
+    // Overdue list: most overdue first. Otherwise newest first.
+    .sort(options.status === "overdue" ? { nextDueAt: 1 } : { createdAt: -1 })
     .select("-__v")
     .lean();
 }
@@ -66,7 +82,13 @@ export async function getCustomerById(userId: string, customerId: string) {
     throw AppError.notFound("Customer not found");
   }
 
-  return customer;
+  const aging = await getAgingReport(userId, customerId);
+
+  return {
+    ...customer,
+    overdueAmount: aging.totalOverdue,
+    aging: aging.buckets,
+  };
 }
 
 export async function updateCustomer(

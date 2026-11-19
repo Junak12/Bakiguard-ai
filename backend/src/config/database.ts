@@ -1,9 +1,11 @@
 import mongoose from "mongoose";
 
 import { Customer } from "../model/Customer.js";
+import { Otp } from "../model/Otp.js";
 import { Session } from "../model/Session.js";
 import { Transaction } from "../model/Transaction.js";
 import { User } from "../model/User.js";
+import { backfillLedgers } from "../services/ledger.service.js";
 import { logger } from "../utils/logger.js";
 
 export async function connectDatabase(uri: string) {
@@ -46,7 +48,10 @@ export async function prepareDatabase() {
 
   // Creates missing indexes and drops ones no longer in the schemas
   // (e.g. the old non-partial userId+phone unique index).
-  for (const model of [User, Session, Customer, Transaction]) {
+  for (const model of [User, Session, Otp, Customer, Transaction]) {
     await model.syncIndexes();
   }
+
+  // Ledgers recorded before due dates existed.
+  await backfillLedgers();
 }

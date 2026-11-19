@@ -52,6 +52,9 @@ services:
       AI_SERVICE_URL: http://ai-service:8000
       AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY}
       TRUST_PROXY: ${TRUST_PROXY:-0}
+      SMS_PROVIDER: ${SMS_PROVIDER:-console}
+      # Local demo only: login codes appear in `docker compose logs backend`.
+      ALLOW_CONSOLE_SMS: ${ALLOW_CONSOLE_SMS:-true}
     ports:
       - "5000:5000"
 

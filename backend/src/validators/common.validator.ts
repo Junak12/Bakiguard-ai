@@ -26,4 +26,30 @@ export const amountSchema = z
   .positive("Amount must be greater than 0")
   .max(100_000_000, "Amount is too large");
 
+/** Bangla keyboards type ০-৯; the ledger stores 0-9. */
+export function toAsciiDigits(value: string) {
+  return value.replace(/[০-৯]/g, (digit) => String("০১২৩৪৫৬৭৮৯".indexOf(digit)));
+}
+
+/**
+ * Accepts the ways people write Bangladeshi mobile numbers
+ * (01712-345678, +8801712345678, 8801712345678, with spaces/dashes)
+ * and stores one canonical form: 01712345678.
+ * One format means duplicate detection and SMS reminders both work.
+ */
+export const bdPhoneSchema = z
+  .string()
+  .trim()
+  .transform(toAsciiDigits)
+  .transform((value) => value.replace(/[\s\-()]/g, ""))
+  .transform((value) => value.replace(/^(\+?88)(?=01)/, ""))
+  .pipe(
+    z
+      .string()
+      .regex(
+        /^01[3-9]\d{8}$/,
+        "Enter a valid Bangladeshi mobile number (e.g. 01712345678)"
+      )
+  );
+
 export type Pagination = z.infer<typeof paginationSchema>;

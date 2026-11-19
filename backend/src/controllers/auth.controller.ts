@@ -2,11 +2,24 @@ import type { CookieOptions, Request, Response } from "express";
 
 import { env } from "../config/env.js";
 import { getUserId, type AuthRequest } from "../middleware/auth.middleware.js";
-import { getUserById, loginUser, registerUser } from "../services/auth.service.js";
+import {
+  getUserById,
+  loginUser,
+  loginWithCode,
+  registerUser,
+  requestLoginCode,
+  updateProfile,
+} from "../services/auth.service.js";
 import { revokeSession, rotateSession } from "../services/session.service.js";
 import { AppError } from "../utils/AppError.js";
 import { generateAccessToken } from "../utils/jwt.js";
-import { loginSchema, registerSchema } from "../validators/auth.validator.js";
+import {
+  loginSchema,
+  otpRequestSchema,
+  otpVerifySchema,
+  registerSchema,
+  updateProfileSchema,
+} from "../validators/auth.validator.js";
 
 export const REFRESH_COOKIE = "bg_refresh";
 
@@ -37,6 +50,37 @@ function clearRefreshCookie(res: Response) {
 function readRefreshCookie(req: Request): string | undefined {
   const value = req.cookies?.[REFRESH_COOKIE];
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+/** Step 1 of phone login: text a code to the number. */
+export async function requestOtp(req: Request, res: Response) {
+  const { phone } = otpRequestSchema.parse(req.body);
+
+  const result = await requestLoginCode(phone);
+
+  res.status(200).json({
+    success: true,
+    message: "Code sent",
+    data: result,
+  });
+}
+
+/** Step 2 of phone login: check the code and sign in (or sign up). */
+export async function verifyOtp(req: Request, res: Response) {
+  const input = otpVerifySchema.parse(req.body);
+
+  const { user, isNewUser, accessToken, refreshToken } = await loginWithCode(
+    input,
+    clientInfo(req)
+  );
+
+  setRefreshCookie(res, refreshToken);
+
+  res.status(isNewUser ? 201 : 200).json({
+    success: true,
+    message: isNewUser ? "Account created successfully" : "Login successful",
+    data: { user, accessToken, isNewUser },
+  });
 }
 
 export async function register(req: Request, res: Response) {
@@ -120,6 +164,18 @@ export async function getMe(req: AuthRequest, res: Response) {
 
   res.status(200).json({
     success: true,
+    data: user,
+  });
+}
+
+export async function updateMe(req: AuthRequest, res: Response) {
+  const input = updateProfileSchema.parse(req.body);
+
+  const user = await updateProfile(getUserId(req), input);
+
+  res.status(200).json({
+    success: true,
+    message: "Profile updated",
     data: user,
   });
 }

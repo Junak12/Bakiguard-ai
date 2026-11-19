@@ -28,9 +28,9 @@ export async function create(req: AuthRequest, res: Response) {
 }
 
 export async function getAll(req: AuthRequest, res: Response) {
-  const { search } = listCustomersQuerySchema.parse(req.query);
+  const options = listCustomersQuerySchema.parse(req.query);
 
-  const customers = await getCustomers(getUserId(req), search);
+  const customers = await getCustomers(getUserId(req), options);
 
   res.status(200).json({
     success: true,

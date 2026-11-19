@@ -1,24 +1,8 @@
 import { z } from "zod";
 
-/**
- * Accepts the ways people write Bangladeshi mobile numbers
- * (01712-345678, +8801712345678, 8801712345678, with spaces/dashes)
- * and stores one canonical form: 01712345678.
- * One format means duplicate detection and SMS reminders both work.
- */
-export const bdPhoneSchema = z
-  .string()
-  .trim()
-  .transform((value) => value.replace(/[\s\-()]/g, ""))
-  .transform((value) => value.replace(/^(\+?88)(?=01)/, ""))
-  .pipe(
-    z
-      .string()
-      .regex(
-        /^01[3-9]\d{8}$/,
-        "Enter a valid Bangladeshi mobile number (e.g. 01712345678)"
-      )
-  );
+import { bdPhoneSchema } from "./common.validator.js";
+
+export { bdPhoneSchema };
 
 export const createCustomerSchema = z.object({
   name: z
@@ -44,6 +28,7 @@ export const updateCustomerSchema = createCustomerSchema
 
 export const listCustomersQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
+  status: z.enum(["all", "due", "overdue"]).default("all"),
 });
 
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;

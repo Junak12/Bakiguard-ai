@@ -2,9 +2,16 @@ import mongoose from "mongoose";
 
 import { Customer } from "../model/Customer.js";
 import { Transaction, type ITransaction } from "../model/Transaction.js";
+import { User } from "../model/User.js";
 import { AppError } from "../utils/AppError.js";
 import type { Pagination } from "../validators/common.validator.js";
 import type { CreateTransactionInput } from "../validators/transaction.validator.js";
+import {
+  addDays,
+  LEGACY_CREDIT_DAYS,
+  refreshNextDue,
+  settleCreditsFifo,
+} from "./ledger.service.js";
 
 function paginationMeta({ page, limit }: Pagination, total: number) {
   return {
@@ -21,6 +28,9 @@ function paginationMeta({ page, limit }: Pagination, total: number) {
  *
  * The balance change is a single conditional $inc, so two payments recorded
  * at the same moment can never take a balance below zero.
+ *
+ * Credits get a due date (given, or the shop's default term). Payments settle
+ * the oldest unpaid credits first, keeping per-credit `outstanding` in sync.
  */
 export async function createTransaction(
   userId: string,
@@ -68,6 +78,13 @@ export async function createTransaction(
         );
       }
 
+      let dueDate: Date | undefined;
+
+      if (!isPayment) {
+        const owner = await User.findById(userId, { defaultCreditDays: 1 }, { session }).lean();
+        dueDate = input.dueDate ?? addDays(now, owner?.defaultCreditDays ?? LEGACY_CREDIT_DAYS);
+      }
+
       [created] = await Transaction.create(
         [
           {
@@ -76,10 +93,17 @@ export async function createTransaction(
             type: input.type,
             amount: input.amount,
             description: input.description,
+            ...(isPayment ? {} : { dueDate, outstanding: input.amount }),
           },
         ],
         { session }
       );
+
+      if (isPayment) {
+        await settleCreditsFifo(userId, input.customerId, input.amount, session);
+      }
+
+      await refreshNextDue(userId, input.customerId, session);
     });
 
     return created!;

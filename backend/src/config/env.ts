@@ -40,6 +40,18 @@ const envSchema = z.object({
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),
+
+  // Which SMS gateway delivers OTPs (and, in Phase 2, reminders).
+  // "console" prints messages to the log: development only.
+  SMS_PROVIDER: z.enum(["console"]).default("console"),
+
+  // Lets a production build use the console provider (local Docker demos).
+  ALLOW_CONSOLE_SMS: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+
+  OTP_TTL_MINUTES: z.coerce.number().int().min(1).max(30).default(5),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -59,6 +71,19 @@ if (
   !parsed.data.AI_SERVICE_API_KEY
 ) {
   console.error("AI_SERVICE_API_KEY is required in production");
+  process.exit(1);
+}
+
+if (
+  parsed.data.NODE_ENV === "production" &&
+  parsed.data.SMS_PROVIDER === "console" &&
+  !parsed.data.ALLOW_CONSOLE_SMS
+) {
+  // Would write login codes into the logs and never reach users' phones.
+  console.error(
+    "SMS_PROVIDER=console is not allowed in production (set a real provider, " +
+      "or ALLOW_CONSOLE_SMS=true for a local demo)"
+  );
   process.exit(1);
 }
 

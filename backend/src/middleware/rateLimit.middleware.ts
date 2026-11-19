@@ -29,3 +29,18 @@ export const authLimiter = rateLimit({
     "Too many attempts. Please try again in 15 minutes."
   ),
 });
+
+/**
+ * Per-IP cap on sending login codes: each one costs an SMS.
+ * (Per-phone limits are enforced in the OTP service.)
+ */
+export const otpSendLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 15,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  skip: () => env.isTest,
+  message: rateLimitResponse(
+    "Too many codes requested. Please try again later."
+  ),
+});
