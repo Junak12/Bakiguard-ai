@@ -44,3 +44,13 @@ export const otpSendLimiter = rateLimit({
     "Too many codes requested. Please try again later."
   ),
 });
+
+/** Public statement links: generous for real customers, hostile to token guessing. */
+export const publicLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  skip: () => env.isTest,
+  message: rateLimitResponse("Too many requests. Please try again later."),
+});

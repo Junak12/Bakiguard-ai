@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 
-import { Customer } from "../model/Customer.js";
+import { Customer, newStatementToken } from "../model/Customer.js";
 import { Otp } from "../model/Otp.js";
+import { Reminder } from "../model/Reminder.js";
 import { Session } from "../model/Session.js";
 import { Transaction } from "../model/Transaction.js";
 import { User } from "../model/User.js";
@@ -48,8 +49,23 @@ export async function prepareDatabase() {
 
   // Creates missing indexes and drops ones no longer in the schemas
   // (e.g. the old non-partial userId+phone unique index).
-  for (const model of [User, Session, Otp, Customer, Transaction]) {
+  for (const model of [User, Session, Otp, Customer, Transaction, Reminder]) {
     await model.syncIndexes();
+  }
+
+  // Statement links for customers created before they existed.
+  const withoutToken = await Customer.find({ statementToken: { $exists: false } }, { _id: 1 }).lean();
+
+  if (withoutToken.length > 0) {
+    await Customer.bulkWrite(
+      withoutToken.map(({ _id }) => ({
+        updateOne: {
+          filter: { _id, statementToken: { $exists: false } },
+          update: { $set: { statementToken: newStatementToken() } },
+        },
+      }))
+    );
+    logger.info({ count: withoutToken.length }, "Created statement links for existing customers");
   }
 
   // Ledgers recorded before due dates existed.

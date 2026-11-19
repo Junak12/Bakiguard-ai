@@ -4,6 +4,8 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
+    // Each worker starts its own in-memory MongoDB; too many at once makes startup flaky.
+    maxWorkers: 4,
     include: ["tests/**/*.test.ts"],
     setupFiles: ["tests/setup.ts"],
     // One in-memory MongoDB per test file; files run in separate workers.

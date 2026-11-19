@@ -1,4 +1,10 @@
+import crypto from "node:crypto";
+
 import mongoose, { Document, Schema } from "mongoose";
+
+export function newStatementToken() {
+  return crypto.randomBytes(24).toString("base64url");
+}
 
 export interface ICustomer extends Document {
   userId: mongoose.Types.ObjectId;
@@ -14,6 +20,14 @@ export interface ICustomer extends Document {
 
   /** Earliest due date among unpaid credits; unset when nothing is owed. */
   nextDueAt?: Date | null;
+
+  /**
+   * Secret for the customer's public statement link (/s/<token>).
+   * 192 random bits; rotating it revokes the old link.
+   */
+  statementToken?: string;
+
+  lastRemindedAt?: Date | null;
 
   /**
    * Customers are never hard-deleted: their ledger history must survive.
@@ -68,6 +82,16 @@ const customerSchema = new Schema<ICustomer>(
       default: null,
     },
 
+    statementToken: {
+      type: String,
+      default: () => newStatementToken(),
+    },
+
+    lastRemindedAt: {
+      type: Date,
+      default: null,
+    },
+
     isArchived: {
       type: Boolean,
       default: false,
@@ -94,5 +118,10 @@ customerSchema.index(
 customerSchema.index({ userId: 1, isArchived: 1, createdAt: -1 });
 customerSchema.index({ userId: 1, isArchived: 1, totalDue: -1 });
 customerSchema.index({ userId: 1, isArchived: 1, nextDueAt: 1 });
+
+customerSchema.index(
+  { statementToken: 1 },
+  { unique: true, partialFilterExpression: { statementToken: { $type: "string" } } }
+);
 
 export const Customer = mongoose.model<ICustomer>("Customer", customerSchema);

@@ -241,3 +241,37 @@ export async function getAgingReport(
     buckets,
   };
 }
+
+/**
+ * Per customer: money past its due date and the oldest such due date.
+ * Optionally limited to some customers.
+ */
+export async function getOverdueByCustomer(userId: string, customerIds?: string[]) {
+  const match: Record<string, unknown> = {
+    userId: new mongoose.Types.ObjectId(userId),
+    type: "CREDIT",
+    outstanding: { $gt: 0 },
+    dueDate: { $lt: new Date() },
+  };
+
+  if (customerIds) {
+    match.customerId = { $in: customerIds.map((id) => new mongoose.Types.ObjectId(id)) };
+  }
+
+  const rows = await Transaction.aggregate<{
+    _id: mongoose.Types.ObjectId;
+    overdueAmount: number;
+    oldestDueDate: Date;
+  }>([
+    { $match: match },
+    {
+      $group: {
+        _id: "$customerId",
+        overdueAmount: { $sum: "$outstanding" },
+        oldestDueDate: { $min: "$dueDate" },
+      },
+    },
+  ]);
+
+  return new Map(rows.map((row) => [row._id.toString(), row]));
+}

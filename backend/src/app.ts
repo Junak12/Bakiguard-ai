@@ -10,8 +10,10 @@ import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js"
 import { apiLimiter } from "./middleware/rateLimit.middleware.js";
 import aiRoutes from "./routes/ai.routes.js";
 import authRoutes from "./routes/auth.routes.js";
+import collectionRoutes from "./routes/collection.routes.js";
 import customerRoutes from "./routes/customer.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
+import publicRoutes from "./routes/public.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js";
 import { logger } from "./utils/logger.js";
 
@@ -68,6 +70,8 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/collections", collectionRoutes);
+app.use("/api/public", publicRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
