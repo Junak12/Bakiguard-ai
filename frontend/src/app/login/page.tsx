@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { loginUser } from "@/lib/auth";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,18 +32,16 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = await loginUser({
+      await loginUser({
         email,
         password,
       });
-
-      localStorage.setItem("accessToken", result.data.token);
 
       router.push("/dashboard");
     } catch (error: any) {
       setError(
         error.response?.data?.message ||
-          "Login failed. Please check your email and password."
+          "Login failed. Please check your email and password.",
       );
     } finally {
       setLoading(false);
@@ -52,7 +51,6 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-[#f8fafc]">
       <div className="flex min-h-screen">
-
         {/* =====================================================
             BRAND SECTION
         ====================================================== */}
@@ -73,7 +71,6 @@ export default function LoginPage() {
           />
 
           <div className="relative z-10 flex w-full flex-col justify-between p-12 xl:p-16">
-
             {/* Logo */}
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500 shadow-lg shadow-emerald-500/20">
@@ -93,7 +90,6 @@ export default function LoginPage() {
 
             {/* Hero */}
             <div className="max-w-xl">
-
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
 
@@ -110,21 +106,18 @@ export default function LoginPage() {
               </h1>
 
               <p className="mt-7 max-w-lg text-base leading-7 text-white/45 xl:text-lg">
-                Manage customers, track outstanding balances, and keep
-                your business finances organized from one simple dashboard.
+                Manage customers, track outstanding balances, and keep your
+                business finances organized from one simple dashboard.
               </p>
 
               {/* Feature cards */}
               <div className="mt-10 grid grid-cols-2 gap-4">
-
                 <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5 backdrop-blur">
                   <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10">
                     <ShieldCheck className="h-5 w-5 text-emerald-400" />
                   </div>
 
-                  <h3 className="text-sm font-semibold text-white">
-                    Secure
-                  </h3>
+                  <h3 className="text-sm font-semibold text-white">Secure</h3>
 
                   <p className="mt-1.5 text-xs leading-5 text-white/35">
                     Your business information stays protected.
@@ -136,29 +129,21 @@ export default function LoginPage() {
                     <LockKeyhole className="h-5 w-5 text-teal-400" />
                   </div>
 
-                  <h3 className="text-sm font-semibold text-white">
-                    Reliable
-                  </h3>
+                  <h3 className="text-sm font-semibold text-white">Reliable</h3>
 
                   <p className="mt-1.5 text-xs leading-5 text-white/35">
                     Everything you need, in one place.
                   </p>
                 </div>
-
               </div>
             </div>
 
             {/* Footer */}
             <div className="flex items-center justify-between text-xs text-white/25">
-              <span>
-                © {new Date().getFullYear()} BakiGuard
-              </span>
+              <span>© {new Date().getFullYear()} BakiGuard</span>
 
-              <span>
-                Secure · Simple · Powerful
-              </span>
+              <span>Secure · Simple · Powerful</span>
             </div>
-
           </div>
         </section>
 
@@ -166,9 +151,7 @@ export default function LoginPage() {
             LOGIN SECTION
         ====================================================== */}
         <section className="flex w-full items-center justify-center px-5 py-10 sm:px-8 lg:w-[48%]">
-
           <div className="w-full max-w-[420px]">
-
             {/* Mobile logo */}
             <div className="mb-12 flex items-center gap-3 lg:hidden">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500">
@@ -176,9 +159,7 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <h2 className="text-xl font-bold text-gray-900">
-                  BakiGuard
-                </h2>
+                <h2 className="text-xl font-bold text-gray-900">BakiGuard</h2>
 
                 <p className="text-xs text-gray-400">
                   Smart business management
@@ -188,7 +169,6 @@ export default function LoginPage() {
 
             {/* Header */}
             <div className="mb-9">
-
               <p className="mb-3 text-sm font-semibold text-emerald-600">
                 Welcome back
               </p>
@@ -200,7 +180,6 @@ export default function LoginPage() {
               <p className="mt-3 text-sm leading-6 text-gray-500">
                 Enter your credentials to continue to your dashboard.
               </p>
-
             </div>
 
             {/* Error */}
@@ -226,11 +205,7 @@ export default function LoginPage() {
             )}
 
             {/* Form */}
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-5"
-            >
-
+            <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email */}
               <div>
                 <label
@@ -241,9 +216,7 @@ export default function LoginPage() {
                 </label>
 
                 <div className="group relative">
-                  <Mail
-                    className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-emerald-500"
-                  />
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-emerald-500" />
 
                   <input
                     id="email"
@@ -283,7 +256,6 @@ export default function LoginPage() {
               {/* Password */}
               <div>
                 <div className="mb-2 flex items-center justify-between">
-
                   <label
                     htmlFor="password"
                     className="text-sm font-semibold text-gray-800"
@@ -297,14 +269,10 @@ export default function LoginPage() {
                   >
                     Forgot password?
                   </button>
-
                 </div>
 
                 <div className="group relative">
-
-                  <LockKeyhole
-                    className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-emerald-500"
-                  />
+                  <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-emerald-500" />
 
                   <input
                     id="password"
@@ -341,13 +309,9 @@ export default function LoginPage() {
 
                   <button
                     type="button"
-                    onClick={() =>
-                      setShowPassword((value) => !value)
-                    }
+                    onClick={() => setShowPassword((value) => !value)}
                     aria-label={
-                      showPassword
-                        ? "Hide password"
-                        : "Show password"
+                      showPassword ? "Hide password" : "Show password"
                     }
                     className="
                       absolute
@@ -372,7 +336,6 @@ export default function LoginPage() {
                       <Eye className="h-5 w-5" />
                     )}
                   </button>
-
                 </div>
               </div>
 
@@ -416,7 +379,6 @@ export default function LoginPage() {
                 ) : (
                   <>
                     Sign in
-
                     <ArrowRight
                       className="
                         h-4
@@ -428,16 +390,24 @@ export default function LoginPage() {
                   </>
                 )}
               </button>
-
             </form>
+            <div className="mt-7 text-center">
+              <p className="text-sm text-gray-500">
+                Don't have an account?{" "}
+                <Link
+                  href="/register"
+                  className="font-semibold text-emerald-600 transition hover:text-emerald-700"
+                >
+                  Create an account
+                </Link>
+              </p>
+            </div>
 
             {/* Security */}
             <div className="mt-8 flex items-center justify-center gap-2 text-xs text-gray-400">
               <LockKeyhole className="h-3.5 w-3.5" />
 
-              <span>
-                Secure and encrypted connection
-              </span>
+              <span>Secure and encrypted connection</span>
             </div>
 
             {/* Legal */}
@@ -452,10 +422,8 @@ export default function LoginPage() {
               </button>
               .
             </p>
-
           </div>
         </section>
-
       </div>
     </main>
   );

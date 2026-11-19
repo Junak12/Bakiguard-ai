@@ -1,12 +1,13 @@
 export interface Customer {
   _id: string;
+  userId: string;
+
   name: string;
-  email?: string;
   phone: string;
   address?: string;
-  totalCredit?: number;
-  totalPayment?: number;
-  currentBaki?: number;
+
+  totalDue: number;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -14,6 +15,5 @@ export interface Customer {
 export interface CreateCustomerData {
   name: string;
   phone: string;
-  email?: string;
   address?: string;
 }
