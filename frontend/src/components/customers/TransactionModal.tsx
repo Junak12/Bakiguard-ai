@@ -1,448 +1,271 @@
 "use client";
 
-import { useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { HandCoins, Loader2, ShoppingBag, X } from "lucide-react";
 
-import Swal from "sweetalert2";
-
-import {
-  AlertCircle,
-  CreditCard,
-  Loader2,
-  Wallet,
-  X,
-} from "lucide-react";
-
-import {
-  createTransaction,
-} from "@/services/customer.service";
-
-import { Customer } from "@/types/customer";
-import { TransactionType } from "@/types/transaction";
+import { useSessionUser } from "@/hooks/useSessionUser";
+import { useI18n } from "@/i18n/I18nProvider";
+import { toAsciiDigits } from "@/i18n/format";
+import { notifyDashboardUpdated } from "@/lib/dashboard-events";
+import { toApiError } from "@/lib/errors";
+import { toastSuccess } from "@/lib/toast";
+import { createTransaction } from "@/services/customer.service";
+import type { Customer } from "@/types/customer";
+import type { TransactionType } from "@/types/transaction";
 
 interface Props {
   customer: Customer;
-
   type: TransactionType;
-
   onClose: () => void;
-
   onSuccess: () => Promise<void>;
 }
 
-export default function TransactionModal({
-  customer,
-  type,
-  onClose,
-  onSuccess,
-}: Props) {
-  const [amount, setAmount] =
-    useState("");
+/** YYYY-MM-DD for today + n days, in the user's local calendar. */
+function isoDateIn(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
 
-  const [description, setDescription] =
-    useState("");
-
-  const [submitting, setSubmitting] =
-    useState(false);
-
-  const [formError, setFormError] =
-    useState("");
+/** Bottom sheet on phones, centered dialog on larger screens. */
+export default function TransactionModal({ customer, type, onClose, onSuccess }: Props) {
+  const { t, money, number } = useI18n();
+  const user = useSessionUser();
 
   const isCredit = type === "CREDIT";
 
-  async function handleSubmit(
-    e: React.FormEvent<HTMLFormElement>
-  ) {
-    e.preventDefault();
+  const presets = useMemo(() => {
+    const options = new Set([7, 15, 30, user?.defaultCreditDays ?? 30]);
+    return [...options].sort((a, b) => a - b);
+  }, [user?.defaultCreditDays]);
 
-    const numericAmount = Number(amount);
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [dueDays, setDueDays] = useState<number | "custom">(user?.defaultCreditDays ?? 30);
+  const [customDate, setCustomDate] = useState(isoDateIn(user?.defaultCreditDays ?? 30));
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-    if (!Number.isInteger(numericAmount) || numericAmount <= 0) {
-      await Swal.fire({
-        icon: "warning",
-        title: "Invalid amount",
-        text: "Please enter a whole amount in Taka, greater than 0.",
-        confirmButtonColor: "#4f46e5",
-      });
+  // Esc closes (unless saving).
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape" && !submitting) onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, submitting]);
 
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+
+    const value = Number(toAsciiDigits(amount).replace(/[,\s]/g, ""));
+
+    if (!Number.isInteger(value) || value <= 0) {
+      setError(t("customers.entry.amountInvalid"));
       return;
     }
 
-    if (
-      type === "PAYMENT" &&
-      numericAmount > customer.totalDue
-    ) {
-      await Swal.fire({
-        icon: "warning",
-        title: "Payment exceeds Baki",
-        text: `Maximum payment is ৳${customer.totalDue.toLocaleString()}.`,
-        confirmButtonColor: "#4f46e5",
-      });
-
+    if (!isCredit && value > customer.totalDue) {
+      setError(t("customers.entry.paymentTooBig", { amount: money(customer.totalDue) }));
       return;
     }
 
-    const result = await Swal.fire({
-      icon: "question",
+    const dueDate = !isCredit ? undefined : dueDays === "custom" ? customDate : isoDateIn(dueDays);
 
-      title: isCredit
-        ? "Confirm credit?"
-        : "Confirm payment?",
-
-      text: isCredit
-        ? `Add ৳${numericAmount.toLocaleString()} credit?`
-        : `Record ৳${numericAmount.toLocaleString()} payment?`,
-
-      showCancelButton: true,
-
-      confirmButtonText: isCredit
-        ? "Yes, add credit"
-        : "Yes, record payment",
-
-      cancelButtonText: "Cancel",
-
-      confirmButtonColor: isCredit
-        ? "#4f46e5"
-        : "#059669",
-
-      reverseButtons: true,
-    });
-
-    if (!result.isConfirmed) {
+    if (dueDate && dueDate < isoDateIn(0)) {
+      setError(t("customers.entry.duePast"));
       return;
     }
+
+    setSubmitting(true);
 
     try {
-      setSubmitting(true);
-      setFormError("");
-
-      Swal.fire({
-        title: isCredit
-          ? "Adding credit..."
-          : "Recording payment...",
-
-        text: "Updating customer account.",
-
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-
-        showConfirmButton: false,
-
-        didOpen: () => {
-          Swal.showLoading();
-        },
-      });
-
       await createTransaction({
         customerId: customer._id,
         type,
-        amount: numericAmount,
-        description:
-          description.trim() || undefined,
+        amount: value,
+        description: description.trim() || undefined,
+        dueDate,
       });
 
+      const balance = isCredit ? customer.totalDue + value : customer.totalDue - value;
+
+      toastSuccess(
+        t(isCredit ? "customers.entry.savedCredit" : "customers.entry.savedPayment", {
+          amount: money(value),
+          balance: money(balance),
+        })
+      );
+
+      notifyDashboardUpdated();
       await onSuccess();
-
-      Swal.close();
-
-      const newBalance = isCredit
-        ? customer.totalDue + numericAmount
-        : customer.totalDue - numericAmount;
-
-      await Swal.fire({
-        icon: "success",
-
-        title: isCredit
-          ? "Credit added successfully"
-          : "Payment recorded successfully",
-
-        html: `
-          <div style="font-size:14px;color:#64748b">
-            ${
-              isCredit
-                ? "Credit added:"
-                : "Payment received:"
-            }
-
-            <br/>
-
-            <strong style="font-size:22px;color:${
-              isCredit ? "#4f46e5" : "#059669"
-            }">
-              ৳${numericAmount.toLocaleString()}
-            </strong>
-
-            <br/><br/>
-
-            New Baki:
-            <strong style="color:#0f172a">
-              ৳${newBalance.toLocaleString()}
-            </strong>
-          </div>
-        `,
-
-        confirmButtonText: "Done",
-
-        confirmButtonColor: "#4f46e5",
-      });
-
       onClose();
-    } catch (error: any) {
-      console.error(error);
+    } catch (err) {
+      const apiError = toApiError(err);
 
-      Swal.close();
-
-      const message =
-        error?.response?.data?.message ||
-        "Failed to create transaction.";
-
-      setFormError(message);
-
-      await Swal.fire({
-        icon: "error",
-        title: "Transaction failed",
-        text: message,
-        confirmButtonColor: "#e11d48",
-      });
-    } finally {
+      setError(
+        apiError.network
+          ? t("common.networkError")
+          : apiError.code === "PAYMENT_EXCEEDS_DUE"
+            ? t("customers.entry.paymentTooBig", { amount: money(customer.totalDue) })
+            : t("common.somethingWrong")
+      );
       setSubmitting(false);
     }
   }
 
+  const accent = isCredit
+    ? { icon: "bg-amber-50 text-amber-600", button: "bg-amber-500 hover:bg-amber-600", ring: "focus:border-amber-500 focus:ring-amber-500/15" }
+    : { icon: "bg-emerald-50 text-emerald-600", button: "bg-emerald-600 hover:bg-emerald-700", ring: "focus:border-emerald-500 focus:ring-emerald-500/15" };
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-      onMouseDown={(e) => {
-        if (
-          e.target === e.currentTarget &&
-          !submitting
-        ) {
-          onClose();
-        }
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 sm:items-center sm:p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !submitting) onClose();
       }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="transaction-title"
     >
-
-      <div className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:max-w-md sm:rounded-3xl">
-
-        {/* HEADER */}
-
-        <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 to-white px-5 py-5 sm:px-6">
-
-          <div className="flex items-start justify-between">
-
-            <div className="flex items-center gap-3">
-
-              <div
-                className={`flex h-11 w-11 items-center justify-center rounded-xl ${
-                  isCredit
-                    ? "bg-indigo-50 text-indigo-600"
-                    : "bg-emerald-50 text-emerald-600"
-                }`}
-              >
-                {isCredit ? (
-                  <CreditCard className="h-5 w-5" />
-                ) : (
-                  <Wallet className="h-5 w-5" />
-                )}
-              </div>
-
-              <div>
-
-                <h2 className="text-lg font-bold text-slate-900">
-                  {isCredit
-                    ? "Add Credit"
-                    : "Add Payment"}
-                </h2>
-
-                <p className="mt-0.5 text-xs text-slate-500">
-                  {customer.name}
-                </p>
-
-              </div>
-
+      <form
+        onSubmit={handleSubmit}
+        noValidate
+        className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:max-w-md sm:rounded-3xl sm:p-6"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${accent.icon}`}>
+              {isCredit ? <ShoppingBag className="h-5 w-5" /> : <HandCoins className="h-5 w-5" />}
             </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
+            <div>
+              <h2 id="transaction-title" className="font-bold text-slate-900">
+                {t(isCredit ? "customers.entry.creditTitle" : "customers.entry.paymentTitle", {
+                  name: customer.name,
+                })}
+              </h2>
+              <p className="text-sm text-slate-500">
+                {t("customers.entry.currentBaki", { amount: money(customer.totalDue) })}
+              </p>
+            </div>
           </div>
-
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            aria-label={t("common.close")}
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        {/* FORM */}
-
-        <form
-          onSubmit={handleSubmit}
-          className="p-5 sm:p-6"
-        >
-
-          {/* CURRENT BAKI */}
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Current Baki
-            </p>
-
-            <p className="mt-1 text-2xl font-bold text-slate-900">
-              ৳{customer.totalDue.toLocaleString()}
-            </p>
-
-          </div>
-
-          {/* AMOUNT */}
-
-          <div className="mt-5">
-
-            <label
-              htmlFor="amount"
-              className="mb-2 block text-sm font-semibold text-slate-700"
-            >
-              Amount{" "}
-              <span className="text-rose-500">
-                *
-              </span>
-            </label>
-
-            <div className="relative">
-
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">
-                ৳
-              </span>
-
-              <input
-                id="amount"
-                type="number"
-                min="1"
-                step="1"
-                inputMode="numeric"
-                value={amount}
-                onChange={(e) =>
-                  setAmount(e.target.value)
-                }
-                placeholder="0"
-                disabled={submitting}
-                required
-                autoFocus
-                className="w-full rounded-xl border border-slate-300 bg-slate-50/50 py-3.5 pl-9 pr-4 text-sm font-medium text-slate-900 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
-              />
-
-            </div>
-
-            {!isCredit && (
-              <p className="mt-1.5 text-xs text-slate-400">
-                Maximum payment: ৳
-                {customer.totalDue.toLocaleString()}
-              </p>
-            )}
-
-          </div>
-
-          {/* DESCRIPTION */}
-
-          <div className="mt-5">
-
-            <label
-              htmlFor="description"
-              className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-700"
-            >
-              <span>Description</span>
-
-              <span className="text-xs font-normal text-slate-400">
-                Optional
-              </span>
-            </label>
-
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) =>
-                setDescription(e.target.value)
-              }
-              placeholder={
-                isCredit
-                  ? "e.g. Grocery purchase"
-                  : "e.g. Cash payment"
-              }
-              maxLength={300}
-              rows={3}
+        <label className="mt-6 block">
+          <span className="text-sm font-semibold text-slate-700">{t("customers.entry.amount")}</span>
+          <span className="relative mt-2 block">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-slate-400">
+              ৳
+            </span>
+            <input
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              inputMode="numeric"
+              autoFocus
+              placeholder={t("customers.entry.amountPlaceholder")}
               disabled={submitting}
-              className="w-full resize-none rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
+              className={`w-full rounded-2xl border border-slate-300 py-4 pl-11 pr-4 text-3xl font-bold text-slate-900 outline-none transition placeholder:text-slate-300 focus:ring-4 ${accent.ring}`}
             />
+          </span>
+        </label>
 
-            <div className="mt-1 text-right text-[10px] text-slate-400">
-              {description.length}/300
+        {!isCredit && customer.totalDue > 0 && (
+          <button
+            type="button"
+            onClick={() => setAmount(String(customer.totalDue))}
+            className="mt-2 rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+          >
+            {t("customers.entry.payAll")}: {money(customer.totalDue)}
+          </button>
+        )}
+
+        {isCredit && (
+          <fieldset className="mt-5">
+            <legend className="text-sm font-semibold text-slate-700">{t("customers.entry.dueLabel")}</legend>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {presets.map((days) => (
+                <button
+                  key={days}
+                  type="button"
+                  onClick={() => setDueDays(days)}
+                  aria-pressed={dueDays === days}
+                  className={`rounded-xl border px-3.5 py-2 text-sm font-semibold transition ${
+                    dueDays === days
+                      ? "border-amber-500 bg-amber-50 text-amber-800"
+                      : "border-slate-200 text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  {t("customers.entry.dueIn", { days: number(days) })}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setDueDays("custom")}
+                aria-pressed={dueDays === "custom"}
+                className={`rounded-xl border px-3.5 py-2 text-sm font-semibold transition ${
+                  dueDays === "custom"
+                    ? "border-amber-500 bg-amber-50 text-amber-800"
+                    : "border-slate-200 text-slate-600 hover:border-slate-300"
+                }`}
+              >
+                {t("customers.entry.customDate")}
+              </button>
             </div>
 
-          </div>
+            {dueDays === "custom" && (
+              <input
+                type="date"
+                value={customDate}
+                min={isoDateIn(0)}
+                max={isoDateIn(365)}
+                onChange={(event) => setCustomDate(event.target.value)}
+                className="mt-3 w-full rounded-xl border border-slate-300 px-4 py-3 text-base text-slate-900 outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15"
+              />
+            )}
+          </fieldset>
+        )}
 
-          {/* ERROR */}
+        <label className="mt-5 block">
+          <span className="flex items-center justify-between text-sm font-semibold text-slate-700">
+            {t("customers.entry.note")}
+            <span className="text-xs font-normal text-slate-400">{t("common.optional")}</span>
+          </span>
+          <input
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            maxLength={300}
+            placeholder={t(
+              isCredit ? "customers.entry.notePlaceholderCredit" : "customers.entry.notePlaceholderPayment"
+            )}
+            disabled={submitting}
+            className={`mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4 ${accent.ring}`}
+          />
+        </label>
 
-          {formError && (
-            <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-sm text-rose-700">
+        {error && <p role="alert" className="mt-4 text-sm text-red-600">{error}</p>}
 
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
-
-              <p className="text-xs font-medium">
-                {formError}
-              </p>
-
-            </div>
-          )}
-
-          {/* BUTTONS */}
-
-          <div className="mt-6 grid grid-cols-2 gap-3">
-
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white ${
-                isCredit
-                  ? "bg-indigo-600 hover:bg-indigo-700"
-                  : "bg-emerald-600 hover:bg-emerald-700"
-              }`}
-            >
-
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : isCredit ? (
-                <>
-                  <CreditCard className="h-4 w-4" />
-                  Add Credit
-                </>
-              ) : (
-                <>
-                  <Wallet className="h-4 w-4" />
-                  Add Payment
-                </>
-              )}
-
-            </button>
-
-          </div>
-
-        </form>
-
-      </div>
-
+        <button
+          type="submit"
+          disabled={submitting}
+          className={`mt-6 flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-semibold text-white shadow-sm transition disabled:opacity-60 ${accent.button}`}
+        >
+          {submitting && <Loader2 className="h-5 w-5 animate-spin" />}
+          {submitting
+            ? t("customers.entry.saving")
+            : t(isCredit ? "customers.entry.saveCredit" : "customers.entry.savePayment")}
+        </button>
+      </form>
     </div>
   );
 }

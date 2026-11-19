@@ -1,154 +1,110 @@
 "use client";
 
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Info,
-  Sparkles,
-  User,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, Sparkles, User } from "lucide-react";
 
-interface AIInsight {
-  type:
-    | "warning"
-    | "customer"
-    | "positive"
-    | "info";
+import { useI18n, type TranslationKey } from "@/i18n/I18nProvider";
+import type { AIDashboardInsights, AIInsight } from "@/lib/ai";
 
-  title: string;
+const KNOWN_CODES = [
+  "overdue_baki",
+  "outstanding_baki",
+  "top_customer",
+  "payment_activity",
+  "getting_started",
+] as const;
 
-  message: string;
+const tone: Record<AIInsight["type"], string> = {
+  warning: "bg-amber-50 text-amber-600",
+  customer: "bg-violet-50 text-violet-600",
+  positive: "bg-emerald-50 text-emerald-600",
+  info: "bg-sky-50 text-sky-600",
+};
 
-  customer?: string;
-}
+const icon: Record<AIInsight["type"], typeof Info> = {
+  warning: AlertTriangle,
+  customer: User,
+  positive: CheckCircle2,
+  info: Info,
+};
 
 interface AIInsightsProps {
-  insights: AIInsight[];
+  data: AIDashboardInsights | null;
+  loading: boolean;
+  failed: boolean;
 }
 
-export default function AIInsights({
-  insights,
-}: AIInsightsProps) {
-  function getIcon(type: AIInsight["type"]) {
-    switch (type) {
-      case "warning":
-        return (
-          <AlertTriangle className="h-4 w-4" />
-        );
+export default function AIInsights({ data, loading, failed }: AIInsightsProps) {
+  const { t, money, number } = useI18n();
 
-      case "customer":
-        return (
-          <User className="h-4 w-4" />
-        );
+  /** Translates a known insight code; falls back to the English text. */
+  function render(insight: AIInsight) {
+    const code = KNOWN_CODES.find((known) => known === insight.code);
 
-      case "positive":
-        return (
-          <CheckCircle2 className="h-4 w-4" />
-        );
+    if (!code) return { title: insight.title, message: insight.message };
 
-      default:
-        return (
-          <Info className="h-4 w-4" />
-        );
-    }
+    const params = insight.params ?? {};
+    const vars = {
+      ...params,
+      amount: typeof params.amount === "number" ? money(params.amount) : "",
+      count: typeof params.count === "number" ? number(params.count) : "",
+    };
+
+    return {
+      title: t(`ai.insights.${code}.title` as TranslationKey),
+      message: t(`ai.insights.${code}.message` as TranslationKey, vars),
+    };
   }
+
+  const unavailable = failed || (data && !data.available);
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
-
-      <div className="border-b border-violet-100 p-5 sm:p-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/20">
-            <Sparkles className="h-5 w-5" />
-          </div>
-
-          <div>
-            <h2 className="text-sm font-bold text-slate-900 sm:text-base">
-              AI Business Insights
-            </h2>
-
-            <p className="text-[10px] text-slate-500 sm:text-xs">
-              Intelligent analysis of your business
-            </p>
-          </div>
+      <div className="flex items-center gap-3 border-b border-slate-100 p-5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white">
+          <Sparkles className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="font-bold text-slate-900">{t("ai.title")}</h2>
+          <p className="text-xs text-slate-500">{t("ai.subtitle")}</p>
         </div>
       </div>
 
-      {/* Insights */}
-
       <div className="flex-1 space-y-3 p-4 sm:p-5">
-        {insights.length === 0 ? (
-          <div className="flex min-h-[180px] flex-col items-center justify-center text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50">
-              <CheckCircle2 className="h-6 w-6 text-emerald-500" />
-            </div>
-
-            <p className="mt-3 text-sm font-semibold text-slate-800">
-              Everything looks good
-            </p>
-
-            <p className="mt-1 text-xs text-slate-500">
-              No important issues detected.
-            </p>
+        {loading ? (
+          <div className="space-y-3" aria-label={t("ai.analyzing")}>
+            {[0, 1, 2].map((key) => (
+              <div key={key} className="h-20 animate-pulse rounded-2xl bg-slate-100" />
+            ))}
+          </div>
+        ) : unavailable ? (
+          <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">{t("ai.unavailable")}</p>
+        ) : !data || data.insights.length === 0 ? (
+          <div className="flex min-h-44 flex-col items-center justify-center text-center">
+            <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+            <p className="mt-3 font-semibold text-slate-800">{t("ai.allGood")}</p>
+            <p className="mt-1 text-sm text-slate-500">{t("ai.allGoodHint")}</p>
           </div>
         ) : (
-          insights.map((insight, index) => (
-            <div
-              key={index}
-              className="rounded-2xl border border-slate-100 bg-white p-3.5 shadow-sm transition hover:shadow-md sm:p-4"
-            >
-              <div className="flex gap-3">
-                <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                    insight.type === "warning"
-                      ? "bg-amber-50 text-amber-600"
-                      : insight.type === "customer"
-                      ? "bg-violet-50 text-violet-600"
-                      : insight.type === "positive"
-                      ? "bg-emerald-50 text-emerald-600"
-                      : "bg-blue-50 text-blue-600"
-                  }`}
-                >
-                  {getIcon(insight.type)}
+          data.insights.map((insight, index) => {
+            const Icon = icon[insight.type] ?? Info;
+            const { title, message } = render(insight);
+
+            return (
+              <div key={`${insight.code}-${index}`} className="flex gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${tone[insight.type] ?? tone.info}`}>
+                  <Icon className="h-4 w-4" />
                 </div>
-
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-xs font-bold text-slate-900 sm:text-sm">
-                    {insight.title}
-                  </h3>
-
-                  <p className="mt-1 text-[11px] leading-5 text-slate-500 sm:text-xs">
-                    {insight.message}
-                  </p>
-
-                  {insight.customer && (
-                    <div className="mt-2 inline-flex rounded-lg bg-violet-50 px-2 py-1 text-[10px] font-semibold text-violet-700">
-                      Customer: {insight.customer}
-                    </div>
-                  )}
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">{message}</p>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
-      {/* Footer */}
-
-      <div className="border-t border-violet-100 bg-violet-50/40 px-5 py-3">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-          </span>
-
-          <span className="text-[10px] font-semibold text-slate-500">
-            AI analysis based on your latest business data
-          </span>
-        </div>
-      </div>
+      <p className="border-t border-slate-100 px-5 py-3 text-xs text-slate-400">{t("ai.footer")}</p>
     </div>
   );
 }

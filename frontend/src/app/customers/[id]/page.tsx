@@ -1,147 +1,92 @@
 "use client";
 
-import { useParams } from "next/navigation";
 import { useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { AlertCircle } from "lucide-react";
 
-import {
-  AlertCircle,
-} from "lucide-react";
-
-import DashboardLayout from "@/components/layout/DashboardLayout";
-
+import CustomerDetailsSkeleton from "@/components/customers/CustomerDetailsSkeleton";
 import CustomerHeader from "@/components/customers/CustomerHeader";
 import CustomerSummary from "@/components/customers/CustomerSummary";
 import CustomerTransactions from "@/components/customers/CustomerTransactions";
-import TransactionModal from "@/components/customers/TransactionModal";
-import CustomerDetailsSkeleton from "@/components/customers/CustomerDetailsSkeleton";
-
-import { TransactionType } from "@/types/transaction";
-
-import { useCustomerDetails } from "@/hooks/customers/useCustomerDetails";
 import PaymentBehavior from "@/components/customers/PaymentBehavior";
+import TransactionModal from "@/components/customers/TransactionModal";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { useCustomerDetails } from "@/hooks/customers/useCustomerDetails";
+import { useI18n } from "@/i18n/I18nProvider";
+import type { TransactionType } from "@/types/transaction";
 
 export default function CustomerDetailsPage() {
-  const params = useParams();
+  return (
+    <DashboardLayout>
+      <CustomerDetails />
+    </DashboardLayout>
+  );
+}
 
-  const customerId = params.id as string;
+function CustomerDetails() {
+  const { t } = useI18n();
+  const customerId = useParams<{ id: string }>().id;
 
-  const {
-    customer,
-    transactions,
-    loading,
-    error,
-    reload,
-  } = useCustomerDetails(customerId);
+  const { customer, transactions, summary, loading, error, reload, hasMore, loadingMore, loadMore } =
+    useCustomerDetails(customerId);
 
-  const [
-    transactionType,
-    setTransactionType,
-  ] = useState<TransactionType | null>(null);
+  const [entryType, setEntryType] = useState<TransactionType | null>(null);
 
-  function openTransactionModal(
-    type: TransactionType
-  ) {
-    setTransactionType(type);
-  }
-
-  function closeTransactionModal() {
-    setTransactionType(null);
-  }
-
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <CustomerDetailsSkeleton />
-      </DashboardLayout>
-    );
-  }
+  if (loading) return <CustomerDetailsSkeleton />;
 
   if (error || !customer) {
     return (
-      <DashboardLayout>
-
-        <div className="mx-auto max-w-2xl">
-
-          <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">
-
-            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" />
-
-            <div>
-
-              <p className="font-semibold">
-                Unable to load customer
-              </p>
-
-              <p className="mt-1 text-xs text-rose-600">
-                {error ||
-                  "Customer not found."}
-              </p>
-
+      <div className="mx-auto max-w-xl rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-800">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          <div>
+            <p className="font-semibold">
+              {error === "not_found" ? t("customers.detail.notFound") : t("customers.detail.loadError")}
+            </p>
+            <div className="mt-3 flex gap-4 text-sm font-semibold">
+              {error === "failed" && (
+                <button type="button" onClick={() => void reload()} className="underline">
+                  {t("common.retry")}
+                </button>
+              )}
+              <Link href="/customers" className="underline">
+                {t("customers.detail.back")}
+              </Link>
             </div>
-
           </div>
-
         </div>
-
-      </DashboardLayout>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
+    <div className="mx-auto max-w-4xl space-y-5">
+      <CustomerHeader
+        customer={customer}
+        onCredit={() => setEntryType("CREDIT")}
+        onPayment={() => setEntryType("PAYMENT")}
+      />
 
-      <div className="relative mx-auto w-full max-w-7xl pb-10 sm:pb-12">
+      <CustomerSummary customer={customer} />
 
-        {/* Background */}
+      <CustomerTransactions
+        transactions={transactions}
+        hasMore={hasMore}
+        loadingMore={loadingMore}
+        onLoadMore={() => void loadMore()}
+      />
 
-        <div className="pointer-events-none absolute -top-10 left-0 -z-10 h-64 w-64 rounded-full bg-indigo-500/10 blur-[110px]" />
+      <PaymentBehavior summary={summary} />
 
-        <div className="pointer-events-none absolute right-0 top-40 -z-10 h-72 w-72 rounded-full bg-cyan-400/10 blur-[120px]" />
-
-        {/* Header */}
-
-        <CustomerHeader
-          customer={customer}
-          onPayment={() =>
-            openTransactionModal("PAYMENT")
-          }
-        />
-
-        {/* Summary */}
-
-        <CustomerSummary
-          customer={customer}
-        />
-
-        <PaymentBehavior  transactions={transactions}/>
-        
-
-        {/* Transactions */}
-
-        <CustomerTransactions
-          customer={customer}
-          transactions={transactions}
-          onAddCredit={() =>
-            openTransactionModal("CREDIT")
-          }
-          onAddPayment={() =>
-            openTransactionModal("PAYMENT")
-          }
-        />
-
-      </div>
-
-      {/* Transaction Modal */}
-
-      {transactionType && (
+      {entryType && (
         <TransactionModal
           customer={customer}
-          type={transactionType}
-          onClose={closeTransactionModal}
+          type={entryType}
+          onClose={() => setEntryType(null)}
           onSuccess={reload}
         />
       )}
-
-    </DashboardLayout>
+    </div>
   );
 }

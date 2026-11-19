@@ -1,0 +1,88 @@
+import { defineMessages } from "./define";
+
+export const landing = defineMessages({
+  en: {
+    login: "Log in",
+    start: "Start free",
+    badge: "Made for Bangladeshi shops",
+    heroTitle: "Your baki khata, that",
+    heroHighlight: "gets your money back.",
+    heroText:
+      "Write credit in seconds, always know who owes what, and see exactly who to collect from today. In Bangla, on your phone.",
+    heroCta: "Start free with your mobile number",
+    heroNote: "No email or password needed",
+
+    demoTotal: "Total Baki",
+    demoOverdue: "Overdue",
+    demoLate: "{days} days late",
+    demoPaid: "Payment received",
+
+    howTitle: "How it works",
+    how1Title: "Add a customer",
+    how1Text: "Just a name and mobile number.",
+    how2Title: "Write Baki and payments",
+    how2Text: "Amount, optional note, and when they'll pay back.",
+    how3Title: "Collect on time",
+    how3Text: "BakiGuard shows who's late and by how much, every day.",
+
+    featuresTitle: "Everything a shop needs to manage Baki",
+    f1Title: "Overdue alerts",
+    f1Text: "See who is 1–30, 31–60 or 90+ days late at a glance.",
+    f2Title: "Bangla first",
+    f2Text: "The whole app in Bangla or English, with Bangla digits.",
+    f3Title: "Log in with your phone",
+    f3Text: "A 6-digit SMS code. Nothing to remember.",
+    f4Title: "AI advice",
+    f4Text: "Tells you who to collect from first and who owes the most.",
+    f5Title: "Correct to the taka",
+    f5Text: "Payments settle the oldest Baki first. Balances never go wrong.",
+    f6Title: "Private and secure",
+    f6Text: "Your khata is visible only to you, protected by secure sessions.",
+
+    ctaTitle: "Stop losing money to forgotten Baki.",
+    ctaText: "Set up in under a minute. Free to start.",
+    footer: "© {year} BakiGuard. All rights reserved.",
+  },
+  bn: {
+    login: "লগ ইন",
+    start: "ফ্রি শুরু করুন",
+    badge: "বাংলাদেশের দোকানের জন্য তৈরি",
+    heroTitle: "আপনার বাকির খাতা, যা",
+    heroHighlight: "টাকা ফেরত আনে।",
+    heroText:
+      "কয়েক সেকেন্ডে বাকি লিখুন, কে কত টাকা দেবে সবসময় জানুন, আর আজ কার কাছ থেকে টাকা তুলবেন দেখে নিন। বাংলায়, আপনার ফোনেই।",
+    heroCta: "মোবাইল নম্বর দিয়ে ফ্রি শুরু করুন",
+    heroNote: "ইমেইল বা পাসওয়ার্ড লাগবে না",
+
+    demoTotal: "মোট বাকি",
+    demoOverdue: "সময় পেরিয়েছে",
+    demoLate: "{days} দিন দেরি",
+    demoPaid: "টাকা জমা পাওয়া গেছে",
+
+    howTitle: "যেভাবে কাজ করে",
+    how1Title: "কাস্টমার যোগ করুন",
+    how1Text: "শুধু নাম আর মোবাইল নম্বর।",
+    how2Title: "বাকি ও জমা লিখুন",
+    how2Text: "টাকার পরিমাণ, চাইলে নোট, আর কবে দেবেন।",
+    how3Title: "সময়মতো টাকা তুলুন",
+    how3Text: "কে কত দিন দেরি করছেন, বাকিগার্ড প্রতিদিন দেখিয়ে দেয়।",
+
+    featuresTitle: "বাকির হিসাব রাখতে দোকানের যা যা লাগে",
+    f1Title: "দেরির সতর্কতা",
+    f1Text: "কে ১–৩০, ৩১–৬০ বা ৯০ দিনের বেশি দেরি করছেন, এক নজরে দেখুন।",
+    f2Title: "বাংলায় সবকিছু",
+    f2Text: "পুরো অ্যাপ বাংলা বা ইংরেজিতে, বাংলা সংখ্যাসহ।",
+    f3Title: "ফোন নম্বর দিয়ে লগ ইন",
+    f3Text: "৬ সংখ্যার এসএমএস কোড। কিছু মনে রাখতে হবে না।",
+    f4Title: "এআই পরামর্শ",
+    f4Text: "কার কাছ থেকে আগে টাকা তুলবেন আর কার কাছে বেশি পাওনা, বলে দেয়।",
+    f5Title: "টাকায় টাকায় সঠিক",
+    f5Text: "জমা টাকা আগে পুরোনো বাকি শোধ করে। হিসাব কখনো ভুল হয় না।",
+    f6Title: "গোপন ও নিরাপদ",
+    f6Text: "আপনার খাতা শুধু আপনিই দেখতে পান, নিরাপদ সেশনে সুরক্ষিত।",
+
+    ctaTitle: "ভুলে যাওয়া বাকিতে আর টাকা হারাবেন না।",
+    ctaText: "এক মিনিটের কম সময়ে শুরু করুন। শুরু করা ফ্রি।",
+    footer: "© {year} বাকিগার্ড। সর্বস্বত্ব সংরক্ষিত।",
+  },
+});

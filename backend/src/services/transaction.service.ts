@@ -5,7 +5,10 @@ import { Transaction, type ITransaction } from "../model/Transaction.js";
 import { User } from "../model/User.js";
 import { AppError } from "../utils/AppError.js";
 import type { Pagination } from "../validators/common.validator.js";
-import type { CreateTransactionInput } from "../validators/transaction.validator.js";
+import type {
+  CreateTransactionInput,
+  TransactionFilters,
+} from "../validators/transaction.validator.js";
 import {
   addDays,
   LEGACY_CREDIT_DAYS,
@@ -178,8 +181,38 @@ export async function getCustomerTransactions(
   };
 }
 
-export async function getTransactions(userId: string, pagination: Pagination) {
-  const filter = { userId };
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export async function getTransactions(
+  userId: string,
+  pagination: Pagination,
+  filters: TransactionFilters = {}
+) {
+  const filter: Record<string, unknown> = { userId };
+
+  if (filters.type) {
+    filter.type = filters.type;
+  }
+
+  if (filters.from || filters.to) {
+    filter.createdAt = {
+      ...(filters.from ? { $gte: filters.from } : {}),
+      ...(filters.to ? { $lte: filters.to } : {}),
+    };
+  }
+
+  if (filters.search) {
+    // Includes archived customers so their history is still searchable.
+    const pattern = new RegExp(escapeRegex(filters.search), "i");
+    const matches = await Customer.find(
+      { userId, $or: [{ name: pattern }, { phone: pattern }] },
+      { _id: 1 }
+    ).lean();
+
+    filter.customerId = { $in: matches.map((customer) => customer._id) };
+  }
 
   const [transactions, total] = await Promise.all([
     Transaction.find(filter)

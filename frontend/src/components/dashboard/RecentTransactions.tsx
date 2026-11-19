@@ -1,117 +1,78 @@
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-} from "lucide-react";
+"use client";
 
-interface Transaction {
-  _id: string;
-  customerName: string;
-  type: "CREDIT" | "PAYMENT";
-  amount: number;
-  description?: string;
-  transactionDate: string;
-}
+import Link from "next/link";
+import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
+
+import { useI18n } from "@/i18n/I18nProvider";
+import type { Transaction } from "@/types/transaction";
 
 interface RecentTransactionsProps {
-  transactions: Transaction[];
+  transactions: Transaction[] | null;
 }
 
-export default function RecentTransactions({
-  transactions,
-}: RecentTransactionsProps) {
+export default function RecentTransactions({ transactions }: RecentTransactionsProps) {
+  const { t, money, dateTime } = useI18n();
+
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-zinc-100 p-5">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-100 p-5">
         <div>
-          <h2 className="font-semibold text-zinc-900">
-            Recent Transactions
-          </h2>
-
-          <p className="mt-1 text-xs text-zinc-400">
-            Latest activity from your customers
-          </p>
+          <h2 className="font-bold text-slate-900">{t("dashboard.recent.title")}</h2>
+          <p className="text-xs text-slate-500">{t("dashboard.recent.subtitle")}</p>
         </div>
-
-        <button className="text-sm font-medium text-zinc-600 hover:text-zinc-900">
-          View all
-        </button>
+        <Link href="/transactions" className="text-sm font-semibold text-emerald-700 hover:text-emerald-800">
+          {t("common.viewAll")}
+        </Link>
       </div>
 
-      <div className="divide-y divide-zinc-100">
-        {transactions.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-sm text-zinc-400">
-              No transactions yet.
-            </p>
-          </div>
-        ) : (
-          transactions.map((transaction) => {
-            const isCredit =
-              transaction.type === "CREDIT";
+      {!transactions ? (
+        <div className="space-y-3 p-5">
+          {[0, 1, 2].map((key) => (
+            <div key={key} className="h-14 animate-pulse rounded-xl bg-slate-100" />
+          ))}
+        </div>
+      ) : transactions.length === 0 ? (
+        <p className="p-8 text-center text-sm text-slate-500">{t("dashboard.recent.empty")}</p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {transactions.map((transaction) => {
+            const isCredit = transaction.type === "CREDIT";
+            const customer = transaction.customerId;
 
             return (
-              <div
-                key={transaction._id}
-                className="flex items-center justify-between p-5"
-              >
-                <div className="flex items-center gap-3">
+              <li key={transaction._id}>
+                <Link
+                  href={customer?._id ? `/customers/${customer._id}` : "/transactions"}
+                  className="flex items-center gap-3 px-5 py-4 transition hover:bg-slate-50"
+                >
                   <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-full ${
-                      isCredit
-                        ? "bg-amber-50"
-                        : "bg-emerald-50"
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                      isCredit ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"
                     }`}
                   >
-                    {isCredit ? (
-                      <ArrowUpRight
-                        size={17}
-                        className="text-amber-600"
-                      />
-                    ) : (
-                      <ArrowDownLeft
-                        size={17}
-                        className="text-emerald-600"
-                      />
-                    )}
+                    {isCredit ? <ArrowUpRight className="h-5 w-5" /> : <ArrowDownLeft className="h-5 w-5" />}
                   </div>
 
-                  <div>
-                    <p className="text-sm font-medium text-zinc-900">
-                      {transaction.customerName}
-                    </p>
-
-                    <p className="text-xs text-zinc-400">
-                      {transaction.description ||
-                        (isCredit
-                          ? "Credit given"
-                          : "Payment received")}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900">{customer?.name ?? "—"}</p>
+                    <p className="truncate text-xs text-slate-500">
+                      {transaction.description || t(isCredit ? "dashboard.recent.credit" : "dashboard.recent.payment")}
                     </p>
                   </div>
-                </div>
 
-                <div className="text-right">
-                  <p
-                    className={`text-sm font-semibold ${
-                      isCredit
-                        ? "text-amber-600"
-                        : "text-emerald-600"
-                    }`}
-                  >
-                    {isCredit ? "+" : "-"}৳
-                    {transaction.amount.toLocaleString()}
-                  </p>
-
-                  <p className="text-xs text-zinc-400">
-                    {new Date(
-                      transaction.transactionDate
-                    ).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
+                  <div className="shrink-0 text-right">
+                    <p className={`text-sm font-bold ${isCredit ? "text-amber-600" : "text-emerald-600"}`}>
+                      {isCredit ? "+" : "−"}
+                      {money(transaction.amount)}
+                    </p>
+                    <p className="text-xs text-slate-400">{dateTime(transaction.createdAt)}</p>
+                  </div>
+                </Link>
+              </li>
             );
-          })
-        )}
-      </div>
+          })}
+        </ul>
+      )}
     </div>
   );
 }

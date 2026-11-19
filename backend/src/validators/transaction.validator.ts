@@ -39,6 +39,17 @@ export const customerIdParamSchema = z.object({
   customerId: objectIdSchema,
 });
 
-export const listTransactionsQuerySchema = paginationSchema;
+export const customerTransactionsQuerySchema = paginationSchema;
+
+export const listTransactionsQuerySchema = paginationSchema.extend({
+  type: z.enum(TRANSACTION_TYPES).optional(),
+  /** Customer name or phone. */
+  search: z.string().trim().max(100).optional(),
+  /** Inclusive range on the transaction date (ISO dates or date-times). */
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+});
+
+export type TransactionFilters = Omit<z.infer<typeof listTransactionsQuerySchema>, "page" | "limit">;
 
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;

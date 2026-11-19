@@ -6,6 +6,7 @@ import { Customer } from "../model/Customer.js";
 import { Transaction } from "../model/Transaction.js";
 import { logger } from "../utils/logger.js";
 import { getDashboardStats } from "./dashboard.service.js";
+import { getAgingReport } from "./ledger.service.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -90,9 +91,10 @@ async function buildCustomerProfiles(userId: string) {
 }
 
 export async function getDashboardAIInsights(userId: string) {
-  const [stats, customers] = await Promise.all([
+  const [stats, customers, aging] = await Promise.all([
     getDashboardStats(userId),
     buildCustomerProfiles(userId),
+    getAgingReport(userId),
   ]);
 
   const summary = {
@@ -100,6 +102,8 @@ export async function getDashboardAIInsights(userId: string) {
     total_credit: stats.totalCredit,
     total_payment: stats.totalPayment,
     total_baki: stats.totalBaki,
+    total_overdue: aging.totalOverdue,
+    overdue_customers: aging.overdueCustomers,
   };
 
   try {

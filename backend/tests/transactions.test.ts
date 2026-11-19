@@ -102,3 +102,40 @@ describe("transactions", () => {
     expect((await api().get("/api/transactions?page=0").set(auth)).status).toBe(400);
   });
 });
+
+describe("transaction filters", () => {
+  it("filters by type, customer name/phone and date range across all pages", async () => {
+    const { auth } = await registerUser();
+    const karim = await createCustomer(auth, { name: "Karim Mia", phone: "01710000001" });
+    const jamal = await createCustomer(auth, { name: "Jamal", phone: "01810000002" });
+
+    for (let i = 0; i < 12; i += 1) {
+      await recordTransaction(auth, jamal._id, "CREDIT", 10);
+    }
+    await recordTransaction(auth, karim._id, "CREDIT", 500);
+    await recordTransaction(auth, karim._id, "PAYMENT", 200);
+
+    const byName = await api().get("/api/transactions?search=karim&limit=5").set(auth);
+    expect(byName.body.pagination.total).toBe(2);
+
+    const byPhone = await api().get("/api/transactions?search=01710").set(auth);
+    expect(byPhone.body.pagination.total).toBe(2);
+
+    const payments = await api().get("/api/transactions?type=PAYMENT").set(auth);
+    expect(payments.body.pagination.total).toBe(1);
+    expect(payments.body.data[0].amount).toBe(200);
+
+    const combined = await api().get("/api/transactions?search=jamal&type=PAYMENT").set(auth);
+    expect(combined.body.pagination.total).toBe(0);
+
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const future = await api().get(`/api/transactions?from=${tomorrow}`).set(auth);
+    expect(future.body.pagination.total).toBe(0);
+
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const recent = await api().get(`/api/transactions?from=${yesterday}&to=${tomorrow}`).set(auth);
+    expect(recent.body.pagination.total).toBe(14);
+
+    expect((await api().get("/api/transactions?type=REFUND").set(auth)).status).toBe(400);
+  });
+});

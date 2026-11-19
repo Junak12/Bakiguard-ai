@@ -14,12 +14,30 @@ import axios from "axios";
 export interface SessionUser {
   id: string;
   name: string;
-  email: string;
+  phone: string | null;
+  email: string | null;
+  shopName: string | null;
+  language: "bn" | "en";
+  defaultCreditDays: number;
 }
 
 let accessToken: string | null = null;
 let currentUser: SessionUser | null = null;
 let refreshInFlight: Promise<string | null> | null = null;
+
+const listeners = new Set<() => void>();
+
+/** For useSyncExternalStore: re-render when the signed-in user changes. */
+export function subscribeSession(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function emit() {
+  listeners.forEach((listener) => listener());
+}
 
 // A bare client (no interceptors) so a failing refresh can't loop.
 const authClient = axios.create({
@@ -38,11 +56,19 @@ export function getCurrentUser() {
 export function setSession(token: string, user: SessionUser) {
   accessToken = token;
   currentUser = user;
+  emit();
+}
+
+/** After a profile edit: same token, fresh user details. */
+export function setCurrentUser(user: SessionUser) {
+  currentUser = user;
+  emit();
 }
 
 export function clearSession() {
   accessToken = null;
   currentUser = null;
+  emit();
 }
 
 /**

@@ -1,123 +1,69 @@
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  CalendarDays,
-} from "lucide-react";
+"use client";
 
-import { Transaction } from "@/types/transaction";
+import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 
-interface Props {
-  transaction: Transaction;
-}
+import { useI18n } from "@/i18n/I18nProvider";
+import { daysFromToday } from "@/i18n/format";
+import type { Transaction } from "@/types/transaction";
 
-export default function TransactionItem({
-  transaction,
-}: Props) {
-  const isCredit =
-    transaction.type === "CREDIT";
+export default function TransactionItem({ transaction }: { transaction: Transaction }) {
+  const { t, money, number, date, dateTime } = useI18n();
 
-  const date = new Date(
-    transaction.createdAt
-  );
+  const isCredit = transaction.type === "CREDIT";
+
+  // Repayment status of a credit: paid, partly paid, late.
+  let creditStatus: { text: string; tone: string } | null = null;
+
+  if (isCredit && transaction.outstanding !== undefined) {
+    if (transaction.outstanding === 0) {
+      creditStatus = { text: t("customers.history.paid"), tone: "bg-emerald-50 text-emerald-700" };
+    } else if (transaction.dueDate && daysFromToday(transaction.dueDate) < 0) {
+      creditStatus = {
+        text: t("customers.history.lateBy", { days: number(-daysFromToday(transaction.dueDate)) }),
+        tone: "bg-rose-50 text-rose-700",
+      };
+    } else if (transaction.outstanding < transaction.amount) {
+      creditStatus = {
+        text: t("customers.history.partlyPaid", { amount: money(transaction.outstanding) }),
+        tone: "bg-amber-50 text-amber-700",
+      };
+    }
+  }
 
   return (
-    <div className="flex flex-col gap-4 p-4 transition-colors hover:bg-slate-50/70 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+    <div className="flex items-start gap-3 px-4 py-4 sm:px-5">
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+          isCredit ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"
+        }`}
+      >
+        {isCredit ? <ArrowUpRight className="h-5 w-5" /> : <ArrowDownLeft className="h-5 w-5" />}
+      </div>
 
-      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-
-        <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-            isCredit
-              ? "bg-amber-50 text-amber-600"
-              : "bg-emerald-50 text-emerald-600"
-          }`}
-        >
-          {isCredit ? (
-            <ArrowDownLeft className="h-5 w-5" />
-          ) : (
-            <ArrowUpRight className="h-5 w-5" />
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-slate-900">
+          {t(isCredit ? "customers.history.credit" : "customers.history.payment")}
+        </p>
+        <p className="truncate text-sm text-slate-500">
+          {transaction.description || t("customers.history.noNote")}
+        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+          <span>{dateTime(transaction.createdAt)}</span>
+          {isCredit && transaction.dueDate && transaction.outstanding !== 0 && (
+            <span>· {t("customers.history.due", { date: date(transaction.dueDate) })}</span>
+          )}
+          {creditStatus && (
+            <span className={`rounded-full px-2 py-0.5 font-semibold ${creditStatus.tone}`}>
+              {creditStatus.text}
+            </span>
           )}
         </div>
-
-        <div className="min-w-0">
-
-          <div className="flex flex-wrap items-center gap-2">
-
-            <p className="text-sm font-semibold text-slate-900">
-              {isCredit
-                ? "Credit"
-                : "Payment"}
-            </p>
-
-            <span
-              className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
-                isCredit
-                  ? "bg-amber-50 text-amber-600"
-                  : "bg-emerald-50 text-emerald-600"
-              }`}
-            >
-              {transaction.type}
-            </span>
-
-          </div>
-
-          <p className="mt-1 truncate text-xs text-slate-500">
-            {transaction.description ||
-              "No description"}
-          </p>
-
-          {/* DATE */}
-
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-400">
-
-            <span className="inline-flex items-center gap-1">
-              <CalendarDays className="h-3 w-3" />
-
-              {date.toLocaleDateString(
-                "en-BD",
-                {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                }
-              )}
-            </span>
-
-            <span>
-              {date.toLocaleTimeString(
-                "en-BD",
-                {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }
-              )}
-            </span>
-
-          </div>
-
-        </div>
-
       </div>
 
-      <div className="flex items-center justify-between border-t border-slate-100 pt-3 sm:block sm:border-0 sm:pt-0 sm:text-right">
-
-        <span className="text-xs font-medium text-slate-400 sm:hidden">
-          Amount
-        </span>
-
-        <p
-          className={`text-base font-bold sm:text-sm ${
-            isCredit
-              ? "text-amber-600"
-              : "text-emerald-600"
-          }`}
-        >
-          {isCredit ? "+" : "-"}৳
-          {transaction.amount.toLocaleString()}
-        </p>
-
-      </div>
-
+      <p className={`shrink-0 font-bold ${isCredit ? "text-amber-600" : "text-emerald-600"}`}>
+        {isCredit ? "+" : "−"}
+        {money(transaction.amount)}
+      </p>
     </div>
   );
 }

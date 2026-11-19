@@ -1,0 +1,126 @@
+import { defineMessages } from "./define";
+
+export const auth = defineMessages({
+  en: {
+    heroTitle: "Get your baki back.",
+    heroSubtitle:
+      "Record credit in seconds, always know who owes what, and see who to collect from today.",
+    heroPoint1: "Works in Bangla and English",
+    heroPoint2: "Your data stays private and secure",
+    heroPoint3: "Overdue alerts for every customer",
+
+    welcome: "Welcome",
+    phoneStepTitle: "Log in or sign up",
+    phoneStepSubtitle: "Enter your mobile number. We'll text you a 6-digit code.",
+    phoneLabel: "Mobile number",
+    phonePlaceholder: "01XXXXXXXXX",
+    sendCode: "Send code",
+    sendingCode: "Sending...",
+
+    codeStepTitle: "Enter the code",
+    codeStepSubtitle: "We sent a 6-digit code to {phone}.",
+    codeLabel: "6-digit code",
+    changeNumber: "Change number",
+    resendIn: "Resend code in {seconds}s",
+    resend: "Resend code",
+    codeResent: "A new code has been sent.",
+
+    newAccountTitle: "Create your account",
+    newAccountSubtitle: "First time here. Tell us about your shop.",
+    nameLabel: "Your name",
+    namePlaceholder: "e.g. Rahim Uddin",
+    shopNameLabel: "Shop name",
+    shopNamePlaceholder: "e.g. Rahim Store",
+
+    verify: "Continue",
+    verifying: "Checking...",
+
+    useEmail: "Have an older account? Log in with email",
+    usePhone: "Log in with mobile number instead",
+
+    emailTitle: "Log in with email",
+    emailSubtitle: "For accounts created before mobile login.",
+    emailLabel: "Email",
+    emailPlaceholder: "you@example.com",
+    passwordLabel: "Password",
+    passwordPlaceholder: "Your password",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
+    logIn: "Log in",
+    loggingIn: "Logging in...",
+
+    terms: "By continuing you agree to keep your customers' data accurate and private.",
+
+    errors: {
+      invalidPhone: "Enter a valid Bangladeshi mobile number (01XXXXXXXXX).",
+      invalidCode: "Enter the 6-digit code.",
+      nameRequired: "Please enter your name.",
+      wrongCode: "The code is wrong or has expired.",
+      cooldown: "Please wait {seconds} seconds before requesting another code.",
+      tooManyCodes: "Too many codes requested. Please try again in an hour.",
+      invalidCredentials: "Wrong email or password.",
+      tooManyAttempts: "Too many attempts. Please wait and try again.",
+    },
+  },
+  bn: {
+    heroTitle: "আপনার বাকির টাকা ফেরত আনুন।",
+    heroSubtitle:
+      "কয়েক সেকেন্ডে বাকি লিখুন, কে কত টাকা দেবে সবসময় জানুন, আর আজ কার কাছ থেকে টাকা তুলবেন দেখে নিন।",
+    heroPoint1: "বাংলা ও ইংরেজি দুই ভাষাতেই চলে",
+    heroPoint2: "আপনার তথ্য গোপন ও নিরাপদ থাকে",
+    heroPoint3: "প্রতিটি কাস্টমারের দেরির সতর্কতা",
+
+    welcome: "স্বাগতম",
+    phoneStepTitle: "লগ ইন বা নতুন অ্যাকাউন্ট",
+    phoneStepSubtitle: "আপনার মোবাইল নম্বর দিন। আমরা ৬ সংখ্যার একটি কোড পাঠাব।",
+    phoneLabel: "মোবাইল নম্বর",
+    phonePlaceholder: "০১XXXXXXXXX",
+    sendCode: "কোড পাঠান",
+    sendingCode: "পাঠানো হচ্ছে...",
+
+    codeStepTitle: "কোডটি লিখুন",
+    codeStepSubtitle: "{phone} নম্বরে ৬ সংখ্যার কোড পাঠানো হয়েছে।",
+    codeLabel: "৬ সংখ্যার কোড",
+    changeNumber: "নম্বর বদলান",
+    resendIn: "{seconds} সেকেন্ড পরে আবার কোড পাঠানো যাবে",
+    resend: "আবার কোড পাঠান",
+    codeResent: "নতুন কোড পাঠানো হয়েছে।",
+
+    newAccountTitle: "নতুন অ্যাকাউন্ট খুলুন",
+    newAccountSubtitle: "প্রথমবার এসেছেন। আপনার দোকান সম্পর্কে বলুন।",
+    nameLabel: "আপনার নাম",
+    namePlaceholder: "যেমন: রহিম উদ্দিন",
+    shopNameLabel: "দোকানের নাম",
+    shopNamePlaceholder: "যেমন: রহিম স্টোর",
+
+    verify: "এগিয়ে যান",
+    verifying: "যাচাই হচ্ছে...",
+
+    useEmail: "পুরোনো অ্যাকাউন্ট? ইমেইল দিয়ে লগ ইন করুন",
+    usePhone: "মোবাইল নম্বর দিয়ে লগ ইন করুন",
+
+    emailTitle: "ইমেইল দিয়ে লগ ইন",
+    emailSubtitle: "মোবাইল লগ ইন চালুর আগে খোলা অ্যাকাউন্টের জন্য।",
+    emailLabel: "ইমেইল",
+    emailPlaceholder: "you@example.com",
+    passwordLabel: "পাসওয়ার্ড",
+    passwordPlaceholder: "আপনার পাসওয়ার্ড",
+    showPassword: "পাসওয়ার্ড দেখুন",
+    hidePassword: "পাসওয়ার্ড লুকান",
+    logIn: "লগ ইন",
+    loggingIn: "লগ ইন হচ্ছে...",
+
+    terms: "এগিয়ে গেলে আপনি কাস্টমারদের তথ্য সঠিক ও গোপন রাখতে সম্মত হচ্ছেন।",
+
+    errors: {
+      invalidPhone: "সঠিক বাংলাদেশি মোবাইল নম্বর দিন (০১XXXXXXXXX)।",
+      invalidCode: "৬ সংখ্যার কোডটি লিখুন।",
+      nameRequired: "অনুগ্রহ করে আপনার নাম লিখুন।",
+      wrongCode: "কোডটি ভুল অথবা মেয়াদ শেষ হয়ে গেছে।",
+      cooldown: "আবার কোড চাওয়ার আগে {seconds} সেকেন্ড অপেক্ষা করুন।",
+      tooManyCodes: "অনেকবার কোড চাওয়া হয়েছে। এক ঘণ্টা পরে আবার চেষ্টা করুন।",
+      invalidCredentials: "ইমেইল বা পাসওয়ার্ড ভুল।",
+      tooManyAttempts: "অনেকবার চেষ্টা করা হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।",
+    },
+  },
+});

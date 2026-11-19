@@ -14,6 +14,10 @@ export interface Transaction {
   type: TransactionType;
   amount: number;
   description?: string;
+  /** CREDIT only. */
+  dueDate?: string;
+  /** CREDIT only: part not yet paid back. */
+  outstanding?: number;
   createdAt: string;
   updatedAt: string;
 }

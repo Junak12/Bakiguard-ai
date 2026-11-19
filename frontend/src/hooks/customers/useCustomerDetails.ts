@@ -2,166 +2,105 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import {
-  getCustomer,
-  getCustomerTransactions,
-} from "@/services/customer.service";
+import { getCustomer, getCustomerTransactions } from "@/services/customer.service";
+import type { Customer } from "@/types/customer";
+import type { Transaction, TransactionPagination } from "@/types/transaction";
 
-import { Customer } from "@/types/customer";
+export interface TransactionSummary {
+  totalCredit: number;
+  totalPayment: number;
+  creditCount: number;
+  paymentCount: number;
+}
 
-import {
-  Transaction,
-  TransactionPagination,
-} from "@/types/transaction";
+const PAGE_SIZE = 20;
 
-export function useCustomerDetails(
-  customerId: string
-) {
-  const [customer, setCustomer] =
-    useState<Customer | null>(null);
-
-  const [transactions, setTransactions] =
-    useState<Transaction[]>([]);
-
-  const [transactionPagination, setTransactionPagination] =
-    useState<TransactionPagination>({
-      page: 1,
-      limit: 10,
-      total: 0,
-      totalPages: 0,
-    });
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
-
-  // =========================================================
-  // LOAD CUSTOMER
-  // =========================================================
-
-  const loadCustomer = useCallback(
-    async () => {
-      const data =
-        await getCustomer(customerId);
-
-      setCustomer(data);
-    },
-    [customerId]
-  );
-
-  // =========================================================
-  // LOAD TRANSACTIONS
-  // =========================================================
-
-  const loadTransactions = useCallback(
-    async (
-      page = 1,
-      limit = 10
-    ) => {
-      const response =
-        await getCustomerTransactions(
-          customerId,
-          page,
-          limit
-        );
-
-      setTransactions(
-        response.data || []
-      );
-
-      setTransactionPagination(
-        response.pagination
-      );
-    },
-    [customerId]
-  );
-
-  // =========================================================
-  // INITIAL LOAD
-  // =========================================================
-
-  const loadCustomerData =
-    useCallback(async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        await Promise.all([
-          loadCustomer(),
-          loadTransactions(1, 10),
-        ]);
-      } catch (error: any) {
-        console.error(error);
-
-        setError(
-          error?.response?.data?.message ||
-            "Unable to load customer details."
-        );
-      } finally {
-        setLoading(false);
-      }
-    }, [
-      loadCustomer,
-      loadTransactions,
+/** Customer + first page of history. Never throws. */
+async function fetchDetails(customerId: string) {
+  try {
+    const [customer, history] = await Promise.all([
+      getCustomer(customerId) as Promise<Customer>,
+      getCustomerTransactions(customerId, 1, PAGE_SIZE),
     ]);
+
+    return { ok: true as const, customer, history };
+  } catch (err) {
+    const status = (err as { response?: { status?: number } }).response?.status;
+
+    return {
+      ok: false as const,
+      error: status === 404 || status === 400 ? ("not_found" as const) : ("failed" as const),
+    };
+  }
+}
+
+export function useCustomerDetails(customerId: string) {
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [summary, setSummary] = useState<TransactionSummary | null>(null);
+  const [pagination, setPagination] = useState<TransactionPagination | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<"not_found" | "failed" | null>(null);
+
+  const apply = useCallback((result: Awaited<ReturnType<typeof fetchDetails>>) => {
+    if (result.ok) {
+      setCustomer(result.customer);
+      setTransactions(result.history.data ?? []);
+      setSummary(result.history.summary ?? null);
+      setPagination(result.history.pagination ?? null);
+      setError(null);
+    } else {
+      setError(result.error);
+    }
+    setLoading(false);
+  }, []);
+
+  /** Reloads the customer and the first page of history (after any change). */
+  const reload = useCallback(async () => {
+    apply(await fetchDetails(customerId));
+  }, [customerId, apply]);
 
   useEffect(() => {
     if (!customerId) return;
 
-    loadCustomerData();
-  }, [
-    customerId,
-    loadCustomerData,
-  ]);
+    let cancelled = false;
 
-  // =========================================================
-  // CHANGE TRANSACTION PAGE
-  // =========================================================
+    fetchDetails(customerId).then((result) => {
+      if (!cancelled) apply(result);
+    });
 
-  async function changeTransactionPage(
-    page: number
-  ) {
-    if (
-      page < 1 ||
-      page >
-        transactionPagination.totalPages
-    ) {
-      return;
-    }
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId, apply]);
+
+  const hasMore = !!pagination && pagination.page < pagination.totalPages;
+
+  async function loadMore() {
+    if (!pagination || !hasMore || loadingMore) return;
+
+    setLoadingMore(true);
 
     try {
-      await loadTransactions(
-        page,
-        transactionPagination.limit
-      );
-    } catch (error) {
-      console.error(error);
+      const next = await getCustomerTransactions(customerId, pagination.page + 1, PAGE_SIZE);
+      setTransactions((current) => [...current, ...(next.data ?? [])]);
+      setPagination(next.pagination);
+    } finally {
+      setLoadingMore(false);
     }
-  }
-
-  // =========================================================
-  // RELOAD
-  // =========================================================
-
-  async function reload() {
-    await loadCustomerData();
   }
 
   return {
     customer,
-
     transactions,
-
-    transactionPagination,
-
+    summary,
     loading,
-
     error,
-
     reload,
-
-    changeTransactionPage,
+    hasMore,
+    loadingMore,
+    loadMore,
   };
 }

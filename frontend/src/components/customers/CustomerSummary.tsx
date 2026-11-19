@@ -1,110 +1,77 @@
-import {
-  MapPin,
-  Phone,
-  Wallet,
-} from "lucide-react";
+"use client";
 
-import { Customer } from "@/types/customer";
+import { AlarmClock, CalendarClock, HandCoins, MapPin, Wallet } from "lucide-react";
 
-interface Props {
-  customer: Customer;
-}
+import { useI18n } from "@/i18n/I18nProvider";
+import { daysFromToday } from "@/i18n/format";
+import type { Customer } from "@/types/customer";
 
-export default function CustomerSummary({
-  customer,
-}: Props) {
+export default function CustomerSummary({ customer }: { customer: Customer }) {
+  const { t, money, number, date } = useI18n();
+
+  const overdue = customer.overdueAmount ?? 0;
+  const lastPaymentDays = customer.lastPaymentAt ? -daysFromToday(customer.lastPaymentAt) : null;
+
+  const tiles = [
+    {
+      icon: Wallet,
+      tone: "bg-amber-50 text-amber-600",
+      label: t("customers.detail.currentBaki"),
+      value: money(customer.totalDue),
+      hint: null as string | null,
+    },
+    {
+      icon: AlarmClock,
+      tone: overdue > 0 ? "bg-rose-50 text-rose-600" : "bg-slate-100 text-slate-500",
+      label: t("customers.detail.overdue"),
+      value: overdue > 0 ? money(overdue) : t("customers.detail.overdueNone"),
+      hint: null,
+    },
+    {
+      icon: CalendarClock,
+      tone: "bg-sky-50 text-sky-600",
+      label: t("customers.detail.nextDue"),
+      value: customer.nextDueAt ? date(customer.nextDueAt) : "—",
+      hint: customer.nextDueAt ? null : t("customers.detail.nextDueNone"),
+    },
+    {
+      icon: HandCoins,
+      tone: "bg-emerald-50 text-emerald-600",
+      label: t("customers.detail.lastPayment"),
+      value: customer.lastPaymentAt ? date(customer.lastPaymentAt) : "—",
+      hint:
+        lastPaymentDays === null
+          ? t("customers.detail.lastPaymentNone")
+          : lastPaymentDays === 0
+            ? t("customers.detail.today")
+            : t("customers.detail.daysAgo", { days: number(lastPaymentDays) }),
+    },
+  ];
+
   return (
-    <section className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-
-      {/* BAKI */}
-
-      <div className="rounded-2xl border border-amber-200/70 bg-gradient-to-br from-white via-amber-50/40 to-orange-50/50 p-5 shadow-sm sm:rounded-3xl sm:p-6">
-
-        <div className="flex items-start justify-between">
-
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Current Baki
-            </p>
-
-            <p className="mt-2 text-2xl font-bold tracking-tight text-amber-600 sm:text-3xl">
-              ৳{customer.totalDue.toLocaleString()}
-            </p>
-
-            <p className="mt-1 text-xs text-slate-500">
-              Outstanding customer balance
-            </p>
+    <section className="space-y-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {tiles.map(({ icon: Icon, tone, label, value, hint }) => (
+          <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${tone}`}>
+              <Icon className="h-4.5 w-4.5" />
+            </div>
+            <p className="mt-3 text-xs text-slate-500">{label}</p>
+            <p className="mt-0.5 text-lg font-bold text-slate-900">{value}</p>
+            {hint && <p className="text-xs text-slate-400">{hint}</p>}
           </div>
-
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
-            <Wallet className="h-5 w-5" />
-          </div>
-
-        </div>
-
+        ))}
       </div>
 
-      {/* PHONE */}
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:rounded-3xl sm:p-6">
-
-        <div className="flex items-start justify-between">
-
-          <div className="min-w-0">
-
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Phone Number
-            </p>
-
-            <p className="mt-2 truncate text-base font-semibold text-slate-900 sm:text-lg">
-              {customer.phone}
-            </p>
-
-            <p className="mt-1 text-xs text-slate-500">
-              Primary contact number
-            </p>
-
-          </div>
-
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-            <Phone className="h-5 w-5" />
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* ADDRESS */}
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:rounded-3xl sm:p-6">
-
-        <div className="flex items-start justify-between gap-4">
-
-          <div className="min-w-0">
-
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Address
-            </p>
-
-            <p className="mt-2 line-clamp-2 text-sm font-medium leading-5 text-slate-800">
-              {customer.address ||
-                "No address provided"}
-            </p>
-
-            <p className="mt-1 text-xs text-slate-500">
-              Customer location
-            </p>
-
-          </div>
-
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-            <MapPin className="h-5 w-5" />
-          </div>
-
-        </div>
-
-      </div>
-
+      {customer.address && (
+        <p className="flex items-start gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
+          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+          <span>
+            <span className="sr-only">{t("customers.detail.address")}: </span>
+            {customer.address}
+          </span>
+        </p>
+      )}
     </section>
   );
 }

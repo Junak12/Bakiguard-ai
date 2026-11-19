@@ -9,6 +9,7 @@ import {
 import {
   createTransactionSchema,
   customerIdParamSchema,
+  customerTransactionsQuerySchema,
   listTransactionsQuerySchema,
 } from "../validators/transaction.validator.js";
 
@@ -29,7 +30,7 @@ export async function getCustomerTransactionsController(
   res: Response
 ) {
   const { customerId } = customerIdParamSchema.parse(req.params);
-  const pagination = listTransactionsQuerySchema.parse(req.query);
+  const pagination = customerTransactionsQuerySchema.parse(req.query);
 
   const result = await getCustomerTransactions(
     getUserId(req),
@@ -46,9 +47,9 @@ export async function getCustomerTransactionsController(
 }
 
 export async function getTransactionsController(req: AuthRequest, res: Response) {
-  const pagination = listTransactionsQuerySchema.parse(req.query);
+  const { page, limit, ...filters } = listTransactionsQuerySchema.parse(req.query);
 
-  const result = await getTransactions(getUserId(req), pagination);
+  const result = await getTransactions(getUserId(req), { page, limit }, filters);
 
   res.status(200).json({
     success: true,

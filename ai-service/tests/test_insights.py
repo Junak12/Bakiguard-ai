@@ -93,3 +93,22 @@ def test_requires_api_key_when_configured(monkeypatch):
     assert missing.status_code == 401
     assert wrong.status_code == 401
     assert right.status_code == 200
+
+
+def test_overdue_insight_comes_first_with_code_and_params():
+    response = client.post(
+        "/api/ai/dashboard-insights",
+        json=payload(total_overdue=600, overdue_customers=2),
+    )
+
+    first = response.json()["data"]["insights"][0]
+    assert first["code"] == "overdue_baki"
+    assert first["params"] == {"amount": 600, "count": 2}
+
+
+def test_every_insight_has_a_code():
+    response = client.post("/api/ai/dashboard-insights", json=payload())
+
+    for insight in response.json()["data"]["insights"]:
+        assert insight["code"]
+        assert isinstance(insight["params"], dict)

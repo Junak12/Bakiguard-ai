@@ -1,14 +1,10 @@
 "use client";
 
-import {
-  ReactNode,
-  useEffect,
-  useState,
-} from "react";
-
+import { type ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { restoreSession } from "@/lib/session";
+import { adoptAccountLanguage, useI18n } from "@/i18n/I18nProvider";
+import { getCurrentUser, restoreSession } from "@/lib/session";
 
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
@@ -17,16 +13,12 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-export default function DashboardLayout({
-  children,
-}: DashboardLayoutProps) {
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
+  const { t } = useI18n();
 
-  const [mobileOpen, setMobileOpen] =
-    useState(false);
-
-  const [checkingAuth, setCheckingAuth] =
-    useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +32,7 @@ export default function DashboardLayout({
         return;
       }
 
+      adoptAccountLanguage(getCurrentUser()?.language);
       setCheckingAuth(false);
     });
 
@@ -48,64 +41,26 @@ export default function DashboardLayout({
     };
   }, [router]);
 
-  // --------------------------------------------------------
-  // AUTH CHECKING
-  // --------------------------------------------------------
-
   if (checkingAuth) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-7 w-7 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900" />
-
-          <p className="text-sm text-zinc-500">
-            Checking authentication...
-          </p>
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600" />
+          <p className="text-sm text-slate-500">{t("nav.checkingSession")}</p>
         </div>
       </div>
     );
   }
 
-  // --------------------------------------------------------
-  // PROTECTED DASHBOARD
-  // --------------------------------------------------------
-
   return (
-    <div className="flex min-h-screen bg-zinc-50">
-      {/* ================================================== */}
-      {/* SIDEBAR */}
-      {/* ================================================== */}
-
-      <Sidebar
-        mobileOpen={mobileOpen}
-        onClose={() =>
-          setMobileOpen(false)
-        }
-      />
-
-      {/* ================================================== */}
-      {/* MAIN CONTENT */}
-      {/* ================================================== */}
+    <div className="flex min-h-screen bg-slate-50">
+      <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* ================================================= */}
-        {/* NAVBAR */}
-        {/* ================================================= */}
-
-        <Navbar
-          onMenuClick={() =>
-            setMobileOpen(true)
-          }
-        />
-
-        {/* ================================================= */}
-        {/* PAGE CONTENT */}
-        {/* ================================================= */}
+        <Navbar onMenuClick={() => setMobileOpen(true)} />
 
         <main className="flex-1 p-4 md:p-6 lg:p-8">
-          <div className="mx-auto max-w-[1600px]">
-            {children}
-          </div>
+          <div className="mx-auto max-w-400">{children}</div>
         </main>
       </div>
     </div>

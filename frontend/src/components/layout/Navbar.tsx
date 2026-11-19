@@ -1,232 +1,134 @@
 "use client";
 
-import {
-  Bell,
-  Menu,
-  Search,
-  LogOut,
-  User,
-  Loader2,
-  X,
-} from "lucide-react";
-
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2, LogOut, Menu, Search, Settings, X } from "lucide-react";
 
+import LanguageToggle from "@/components/i18n/LanguageToggle";
+import { useI18n } from "@/i18n/I18nProvider";
 import { getCustomers } from "@/lib/customer";
+import { useSessionUser } from "@/hooks/useSessionUser";
 import { logout } from "@/lib/session";
+import type { Customer } from "@/types/customer";
 
 interface NavbarProps {
   onMenuClick: () => void;
 }
 
-interface CustomerSearchResult {
-  _id: string;
-  name: string;
-  phone?: string;
-  totalDue?: number;
+function initial(name: string | undefined) {
+  return name?.trim().charAt(0).toUpperCase() || "?";
 }
 
-export default function Navbar({
-  onMenuClick,
-}: NavbarProps) {
+export default function Navbar({ onMenuClick }: NavbarProps) {
   const router = useRouter();
+  const { t, money } = useI18n();
 
-  const searchRef = useRef<HTMLDivElement>(null);
+  // DashboardLayout only renders us after the session is restored.
+  const user = useSessionUser();
 
   const [search, setSearch] = useState("");
-  const [customers, setCustomers] = useState<
-    CustomerSearchResult[]
-  >([]);
+  const [results, setResults] = useState<Customer[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
-  const [searching, setSearching] =
-    useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
-  const [showResults, setShowResults] =
-    useState(false);
-
-  const [showProfileMenu, setShowProfileMenu] =
-    useState(false);
-
-  const [signingOut, setSigningOut] =
-    useState(false);
-
-  /*
-   * Search customers
-   */
+  // Debounced server-side search.
   useEffect(() => {
-    const searchCustomers = async () => {
-      const query = search.trim().toLowerCase();
+    const query = search.trim();
 
-      if (!query) {
-        setCustomers([]);
-        setShowResults(false);
-        return;
-      }
+    if (!query) return;
+
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
+      setSearching(true);
 
       try {
-        setSearching(true);
-        setShowResults(true);
-
-        const data = await getCustomers();
-
-        const filtered = data
-          .filter((customer: CustomerSearchResult) => {
-            const name =
-              customer.name?.toLowerCase() || "";
-
-            const phone =
-              customer.phone?.toLowerCase() || "";
-
-            return (
-              name.includes(query) ||
-              phone.includes(query)
-            );
-          })
-          .slice(0, 8);
-
-        setCustomers(filtered);
-      } catch (error) {
-        console.error(
-          "Customer search failed:",
-          error
-        );
-
-        setCustomers([]);
+        const customers = await getCustomers({ search: query });
+        if (!cancelled) setResults(customers.slice(0, 8));
+      } catch {
+        if (!cancelled) setResults([]);
       } finally {
-        setSearching(false);
+        if (!cancelled) setSearching(false);
       }
-    };
-
-    const timer = setTimeout(
-      searchCustomers,
-      300
-    );
-
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  /*
-   * Close dropdown when clicking outside
-   */
-  useEffect(() => {
-    function handleClickOutside(
-      event: MouseEvent
-    ) {
-      if (
-        searchRef.current &&
-        !searchRef.current.contains(
-          event.target as Node
-        )
-      ) {
-        setShowResults(false);
-      }
-    }
-
-    document.addEventListener(
-      "mousedown",
-      handleClickOutside
-    );
+    }, 250);
 
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside
-      );
+      cancelled = true;
+      clearTimeout(timer);
     };
+  }, [search]);
+
+  // Close popovers on outside click.
+  useEffect(() => {
+    function handleClick(event: MouseEvent) {
+      const target = event.target as Node;
+      if (searchRef.current && !searchRef.current.contains(target)) setShowResults(false);
+      if (profileRef.current && !profileRef.current.contains(target)) setShowProfileMenu(false);
+    }
+
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  /*
-   * Open customer
-   */
-  function handleCustomerClick(
-    customerId: string
-  ) {
+  function openCustomer(id: string) {
     setSearch("");
     setShowResults(false);
-
-    router.push(
-      `/customers/${customerId}`
-    );
+    router.push(`/customers/${id}`);
   }
 
-  /*
-   * Sign out: revokes the session on the server and clears the
-   * in-memory token. Redirects even if the network call fails.
-   */
   async function handleSignOut() {
-    try {
-      setSigningOut(true);
+    setSigningOut(true);
 
-      // Remove tokens left behind by older versions of the app.
+    try {
+      // Tokens left behind by older versions of the app.
       localStorage.removeItem("token");
       localStorage.removeItem("accessToken");
-
       await logout();
     } catch (error) {
-      console.error(
-        "Sign out failed:",
-        error
-      );
+      console.error("Sign out failed:", error);
     } finally {
-      setSigningOut(false);
       router.replace("/login");
     }
   }
 
+  const query = search.trim();
+
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200/80 bg-white/95 px-3 shadow-sm backdrop-blur-xl sm:h-20 sm:px-4 md:px-6">
-      {/* =====================================================
-          LEFT
-      ====================================================== */}
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between gap-2 border-b border-slate-200/80 bg-white/95 px-3 shadow-sm backdrop-blur-xl sm:h-20 sm:px-4 md:px-6">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-        {/* Mobile Menu */}
         <button
           type="button"
           onClick={onMenuClick}
-          aria-label="Open navigation menu"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 active:scale-95 lg:hidden"
+          aria-label={t("nav.openMenu")}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 active:scale-95 lg:hidden"
         >
           <Menu size={21} />
         </button>
 
-        {/* Search */}
-        <div
-          ref={searchRef}
-          className="relative"
-        >
-          <div className="hidden h-11 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 transition-all focus-within:border-violet-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-violet-500/10 sm:flex md:w-[280px] lg:w-[340px]"
-          >
+        <div ref={searchRef} className="relative">
+          <div className="hidden h-11 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 transition-all focus-within:border-emerald-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-emerald-500/10 sm:flex md:w-70 lg:w-96">
             {searching ? (
-              <Loader2
-                size={17}
-                className="shrink-0 animate-spin text-violet-500"
-              />
+              <Loader2 size={17} className="shrink-0 animate-spin text-emerald-600" />
             ) : (
-              <Search
-                size={17}
-                className="shrink-0 text-slate-400"
-              />
+              <Search size={17} className="shrink-0 text-slate-400" />
             )}
 
             <input
-              type="text"
+              type="search"
               value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
-              }
-              onFocus={() => {
-                if (search.trim()) {
-                  setShowResults(true);
-                }
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setShowResults(true);
               }}
-              placeholder="Search customers..."
-              className="min-w-0 flex-1 bg-transparent text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400"
+              onFocus={() => query && setShowResults(true)}
+              placeholder={t("nav.searchPlaceholder")}
+              aria-label={t("nav.searchLabel")}
+              className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
             />
 
             {search && (
@@ -236,259 +138,124 @@ export default function Navbar({
                   setSearch("");
                   setShowResults(false);
                 }}
-                className="rounded-md p-1 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+                aria-label={t("common.close")}
+                className="rounded-md p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
               >
                 <X size={14} />
               </button>
             )}
-
-            <span className="hidden rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400 lg:block">
-              ⌘ K
-            </span>
           </div>
 
-          {/* Search Results */}
-          {showResults && search.trim() && (
-            <div className="absolute left-0 top-14 z-50 w-[calc(100vw-24px)] max-w-[380px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 sm:w-[380px]">
-              {/* Header */}
-              <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Customer Search
-                </p>
+          {showResults && query && (
+            <div className="absolute left-0 top-14 z-50 w-[calc(100vw-24px)] max-w-95 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 sm:w-95">
+              <p className="truncate border-b border-slate-100 bg-slate-50/80 px-4 py-3 text-xs text-slate-500">
+                {t("nav.searchResults", { query })}
+              </p>
 
-                <p className="mt-0.5 truncate text-xs text-slate-500">
-                  Results for "{search}"
+              {searching && results.length === 0 ? (
+                <p className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-slate-500">
+                  <Loader2 size={17} className="animate-spin text-emerald-600" />
+                  {t("nav.searching")}
                 </p>
-              </div>
-
-              {/* Loading */}
-              {searching && (
-                <div className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-slate-500">
-                  <Loader2
-                    size={17}
-                    className="animate-spin text-violet-500"
-                  />
-                  Searching customers...
+              ) : results.length > 0 ? (
+                <div className="max-h-90 overflow-y-auto p-2">
+                  {results.map((customer) => (
+                    <button
+                      key={customer._id}
+                      type="button"
+                      onClick={() => openCustomer(customer._id)}
+                      className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition hover:bg-emerald-50"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-sm font-bold text-emerald-700">
+                        {initial(customer.name)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-900">{customer.name}</p>
+                        <p className="truncate text-xs text-slate-500">{customer.phone}</p>
+                      </div>
+                      <p
+                        className={`shrink-0 text-xs font-bold ${
+                          customer.totalDue > 0 ? "text-amber-600" : "text-emerald-600"
+                        }`}
+                      >
+                        {customer.totalDue > 0
+                          ? t("nav.owes", { amount: money(customer.totalDue) })
+                          : t("nav.settled")}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="px-4 py-10 text-center">
+                  <p className="text-sm font-semibold text-slate-800">{t("nav.noResults")}</p>
+                  <p className="mt-1 text-xs text-slate-500">{t("nav.noResultsHint")}</p>
                 </div>
               )}
-
-              {/* Results */}
-              {!searching &&
-                customers.length > 0 && (
-                  <div className="max-h-[360px] overflow-y-auto p-2">
-                    {customers.map(
-                      (customer) => (
-                        <button
-                          key={customer._id}
-                          type="button"
-                          onClick={() =>
-                            handleCustomerClick(
-                              customer._id
-                            )
-                          }
-                          className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition hover:bg-violet-50 active:scale-[0.99]"
-                        >
-                          {/* Avatar */}
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-sm font-bold text-white shadow-sm">
-                            {customer.name
-                              ?.charAt(0)
-                              .toUpperCase()}
-                          </div>
-
-                          {/* Information */}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold text-slate-900">
-                              {customer.name}
-                            </p>
-
-                            {customer.phone && (
-                              <p className="mt-0.5 truncate text-xs text-slate-500">
-                                {customer.phone}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Baki */}
-                          {typeof customer.totalDue ===
-                            "number" && (
-                            <div className="shrink-0 text-right">
-                              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                                Baki
-                              </p>
-
-                              <p
-                                className={`text-xs font-bold ${
-                                  customer.totalDue >
-                                  0
-                                    ? "text-amber-600"
-                                    : "text-emerald-600"
-                                }`}
-                              >
-                                ৳
-                                {customer.totalDue.toLocaleString()}
-                              </p>
-                            </div>
-                          )}
-                        </button>
-                      )
-                    )}
-                  </div>
-                )}
-
-              {/* No Results */}
-              {!searching &&
-                customers.length === 0 && (
-                  <div className="px-4 py-10 text-center">
-                    <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100">
-                      <Search
-                        size={19}
-                        className="text-slate-400"
-                      />
-                    </div>
-
-                    <p className="mt-3 text-sm font-semibold text-slate-800">
-                      No customers found
-                    </p>
-
-                    <p className="mt-1 text-xs text-slate-500">
-                      Try searching by name or phone
-                      number.
-                    </p>
-                  </div>
-                )}
             </div>
           )}
         </div>
 
-        {/* Mobile Search Button */}
         <button
           type="button"
-          onClick={() => {
-            /*
-             * On very small screens we can redirect
-             * to the customers page instead of forcing
-             * a tiny search input.
-             */
-            router.push("/customers");
-          }}
-          aria-label="Search customers"
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 sm:hidden"
+          onClick={() => router.push("/customers")}
+          aria-label={t("nav.searchLabel")}
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 sm:hidden"
         >
           <Search size={19} />
         </button>
       </div>
 
-      {/* =====================================================
-          RIGHT
-      ====================================================== */}
-      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 md:gap-4">
-        {/* Notifications */}
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 active:scale-95"
-        >
-          <Bell size={19} />
+      <div className="flex shrink-0 items-center gap-2 md:gap-4">
+        <LanguageToggle />
 
-          <span className="absolute right-2.5 top-2 h-1.5 w-1.5 rounded-full bg-rose-500 ring-2 ring-white" />
-        </button>
-
-        {/* Divider */}
-        <div className="hidden h-8 w-px bg-slate-200 sm:block" />
-
-        {/* Profile */}
-        <div className="relative">
+        <div ref={profileRef} className="relative">
           <button
             type="button"
-            onClick={() =>
-              setShowProfileMenu(
-                (value) => !value
-              )
-            }
-            className="flex items-center gap-2 rounded-xl p-1.5 transition hover:bg-slate-100 active:scale-[0.98] sm:gap-3 sm:pr-2"
+            onClick={() => setShowProfileMenu((value) => !value)}
+            aria-expanded={showProfileMenu}
+            className="flex items-center gap-2 rounded-xl p-1.5 transition hover:bg-slate-100 sm:gap-3 sm:pr-2"
           >
-            {/* Avatar */}
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 text-sm font-bold text-white shadow-sm sm:h-10 sm:w-10">
-              J
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-sm font-bold text-white sm:h-10 sm:w-10">
+              {initial(user?.name)}
             </div>
-
-            {/* User Information */}
             <div className="hidden text-left md:block">
-              <p className="text-sm font-semibold text-slate-900">
-                Junak
-              </p>
-
-              <p className="text-[11px] font-medium text-slate-400">
-                Business Owner
+              <p className="max-w-40 truncate text-sm font-semibold text-slate-900">{user?.name}</p>
+              <p className="max-w-40 truncate text-[11px] text-slate-400">
+                {user?.shopName || t("nav.owner")}
               </p>
             </div>
           </button>
 
-          {/* Profile Dropdown */}
           {showProfileMenu && (
             <div className="absolute right-0 top-14 z-50 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10">
-              {/* User Header */}
               <div className="border-b border-slate-100 bg-slate-50/80 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 text-sm font-bold text-white">
-                    J
-                  </div>
-
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-slate-900">
-                      Junak
-                    </p>
-
-                    <p className="truncate text-xs text-slate-500">
-                      Business Owner
-                    </p>
-                  </div>
-                </div>
+                <p className="truncate text-sm font-bold text-slate-900">{user?.name}</p>
+                <p className="truncate text-xs text-slate-500">
+                  {user?.shopName || user?.phone || user?.email}
+                </p>
               </div>
 
-              {/* Menu */}
               <div className="p-2">
                 <button
                   type="button"
                   onClick={() => {
-                    setShowProfileMenu(
-                      false
-                    );
-
-                    router.push(
-                      "/profile"
-                    );
+                    setShowProfileMenu(false);
+                    router.push("/settings");
                   }}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
                 >
-                  <User size={17} />
-
-                  <span>
-                    Profile Settings
-                  </span>
+                  <Settings size={17} />
+                  {t("nav.settings")}
                 </button>
 
-                {/* Sign Out */}
                 <button
                   type="button"
                   onClick={handleSignOut}
                   disabled={signingOut}
-                  className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
                 >
-                  {signingOut ? (
-                    <Loader2
-                      size={17}
-                      className="animate-spin"
-                    />
-                  ) : (
-                    <LogOut size={17} />
-                  )}
-
-                  <span>
-                    {signingOut
-                      ? "Signing out..."
-                      : "Sign Out"}
-                  </span>
+                  {signingOut ? <Loader2 size={17} className="animate-spin" /> : <LogOut size={17} />}
+                  {signingOut ? t("nav.signingOut") : t("nav.signOut")}
                 </button>
               </div>
             </div>
