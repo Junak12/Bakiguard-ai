@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowLeftRight,
+  BellRing,
   BrainCircuit,
   LayoutDashboard,
   Settings,
@@ -21,6 +22,7 @@ interface SidebarProps {
 
 const navigation: { label: TranslationKey; href: string; icon: typeof Users }[] = [
   { label: "nav.dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "collections.nav", href: "/collections", icon: BellRing },
   { label: "nav.customers", href: "/customers", icon: Users },
   { label: "nav.transactions", href: "/transactions", icon: ArrowLeftRight },
   { label: "nav.aiInsights", href: "/ai-insights", icon: BrainCircuit },

@@ -17,6 +17,10 @@ export interface Customer {
   nextDueAt?: string | null;
   lastCreditAt?: string;
   lastPaymentAt?: string;
+  lastRemindedAt?: string | null;
+
+  /** Secret for the customer's public statement link (/s/<token>). */
+  statementToken?: string;
 
   /** Only on the single-customer endpoint. */
   overdueAmount?: number;

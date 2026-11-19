@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AlarmClock, HandCoins, UserPlus, Users, Wallet } from "lucide-react";
+import { AlarmClock, BellRing, ChevronRight, HandCoins, UserPlus, Users, Wallet } from "lucide-react";
 
 import AgingCard from "@/components/dashboard/AgingCard";
 import AIInsights from "@/components/dashboard/AIInsights";
@@ -12,6 +12,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useSessionUser } from "@/hooks/useSessionUser";
 import { useI18n } from "@/i18n/I18nProvider";
 import { getDashboardAIInsights, type AIDashboardInsights } from "@/lib/ai";
+import { getCollections, type CollectionSummary } from "@/lib/collections";
 import { DASHBOARD_UPDATED } from "@/lib/dashboard-events";
 import {
   getAgingReport,
@@ -33,13 +34,14 @@ export default function DashboardPage() {
 /** Stats, aging and recent activity in one round. Null on failure. */
 async function fetchDashboard() {
   try {
-    const [stats, aging, recent] = await Promise.all([
+    const [stats, aging, recent, collections] = await Promise.all([
       getDashboardStats(),
       getAgingReport(),
       getTransactions({ page: 1, limit: 6 }),
+      getCollections(),
     ]);
 
-    return { stats, aging, recent: recent.data };
+    return { stats, aging, recent: recent.data, collections: collections.summary };
   } catch {
     return null;
   }
@@ -58,6 +60,7 @@ function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [aging, setAging] = useState<AgingReport | null>(null);
   const [recent, setRecent] = useState<Transaction[] | null>(null);
+  const [collections, setCollections] = useState<CollectionSummary | null>(null);
   const [error, setError] = useState(false);
 
   const [ai, setAi] = useState<AIDashboardInsights | null>(null);
@@ -69,6 +72,7 @@ function Dashboard() {
       setStats(result.stats);
       setAging(result.aging);
       setRecent(result.recent);
+      setCollections(result.collections);
     }
     setError(!result);
   }, []);
@@ -132,6 +136,38 @@ function Dashboard() {
           </button>
         </div>
       )}
+
+      {/* The one thing to do today. */}
+      <Link
+        href="/collections"
+        className={`flex items-center gap-4 rounded-2xl p-5 shadow-sm transition ${
+          collections && collections.count > 0
+            ? "bg-rose-600 text-white hover:bg-rose-700"
+            : "border border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
+        }`}
+      >
+        <div
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+            collections && collections.count > 0 ? "bg-white/15" : "bg-emerald-50 text-emerald-600"
+          }`}
+        >
+          <BellRing className="h-6 w-6" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-bold">{t("collections.dashboardCard")}</p>
+          <p className={`text-sm ${collections && collections.count > 0 ? "text-white/80" : "text-slate-500"}`}>
+            {!collections
+              ? t("common.loading")
+              : collections.count > 0
+                ? t("collections.dashboardCardText", {
+                    count: number(collections.count),
+                    amount: money(collections.totalToCollect),
+                  })
+                : t("collections.dashboardCardEmpty")}
+          </p>
+        </div>
+        <ChevronRight className="h-5 w-5 shrink-0 opacity-70" />
+      </Link>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard

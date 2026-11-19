@@ -1,6 +1,7 @@
 import type { Language } from "../format";
 import { ai } from "./ai";
 import { auth } from "./auth";
+import { collections, reminders, statement } from "./collections";
 import { common } from "./common";
 import { customers } from "./customers";
 import { dashboard } from "./dashboard";
@@ -10,7 +11,7 @@ import { pwa } from "./pwa";
 import { settings } from "./settings";
 import { transactions } from "./transactions";
 
-const areas = { common, nav, auth, pwa, settings, dashboard, ai, customers, transactions, landing };
+const areas = { common, nav, auth, pwa, settings, dashboard, ai, customers, transactions, landing, collections, reminders, statement };
 
 type Areas = typeof areas;
 

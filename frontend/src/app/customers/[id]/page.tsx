@@ -10,6 +10,7 @@ import CustomerHeader from "@/components/customers/CustomerHeader";
 import CustomerSummary from "@/components/customers/CustomerSummary";
 import CustomerTransactions from "@/components/customers/CustomerTransactions";
 import PaymentBehavior from "@/components/customers/PaymentBehavior";
+import ReminderPanel from "@/components/reminders/ReminderPanel";
 import TransactionModal from "@/components/customers/TransactionModal";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useCustomerDetails } from "@/hooks/customers/useCustomerDetails";
@@ -69,6 +70,9 @@ function CustomerDetails() {
       />
 
       <CustomerSummary customer={customer} />
+
+      {/* Re-mount after changes so "last reminded" and the link stay current. */}
+      <ReminderPanel key={`${customer._id}-${customer.totalDue}`} customer={customer} />
 
       <CustomerTransactions
         transactions={transactions}

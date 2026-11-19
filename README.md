@@ -96,12 +96,19 @@ All responses: `{ success, data?, message?, code?, errors? }`.
 | GET | `/api/transactions/customer/:customerId` | History + summary |
 | GET | `/api/dashboard/stats`, `/api/dashboard/aging` | Totals; overdue buckets |
 | GET | `/api/ai/dashboard-insights` | |
+| GET | `/api/collections` | Today's collection list (`?days=` window) |
+| GET/POST | `/api/customers/:id/reminders` | Reminder log |
+| POST | `/api/customers/:id/statement-link` | New statement link (revokes the old one) |
+| GET | `/api/public/statements/:token` | Public statement (no login) |
+| POST | `/api/auth/google` | Sign in with Google (ID token) |
 | GET | `/api/health`, `/api/health/ready` | Liveness / readiness |
 
 ## Roadmap
 
 - **Phase 0 (done):** security, error handling, tests, Docker, CI
 - **Phase 1 (done):** Bangla + English UI, installable PWA, phone + OTP login, due dates and aging
-- **Phase 2:** automatic SMS/WhatsApp reminders, daily collection list, shareable customer statement
+- **Phase 2 (done):** "Collect today" list, WhatsApp/SMS/call reminders sent from the
+  owner's own phone (pre-written Bangla message, logged), shareable customer statement
+  link (`/s/<token>`, revocable). Automatic SMS sending waits for an SMS provider.
 - **Phase 3:** AI risk score and credit-limit suggestions per customer
 - **Phase 4:** subscriptions, multiple shops and staff, reports
