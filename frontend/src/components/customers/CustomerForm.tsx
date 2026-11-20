@@ -1,7 +1,8 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
-import { Loader2, MapPin, Phone, User } from "lucide-react";
+import Link from "next/link";
+import { Crown, Loader2, MapPin, Phone, User } from "lucide-react";
 
 import { useI18n } from "@/i18n/I18nProvider";
 import { toApiError } from "@/lib/errors";
@@ -22,13 +23,14 @@ export default function CustomerForm({
   submittingLabel,
   onSubmit,
 }: CustomerFormProps) {
-  const { t } = useI18n();
+  const { t, number } = useI18n();
 
   const [name, setName] = useState(initial?.name ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [address, setAddress] = useState(initial?.address ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [planLimit, setPlanLimit] = useState<number | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,6 +63,12 @@ export default function CustomerForm({
       await onSubmit(data);
     } catch (err) {
       const apiError = toApiError(err);
+
+      if (apiError.code === "PLAN_LIMIT_CUSTOMERS") {
+        setPlanLimit(Number(apiError.errors?.limit ?? 50));
+        setSubmitting(false);
+        return;
+      }
 
       setError(
         apiError.network
@@ -134,6 +142,16 @@ export default function CustomerForm({
       </label>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+
+      {planLimit !== null && (
+        <p role="alert" className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+          <Crown className="h-4 w-4 text-amber-500" />
+          {t("billing.limitCustomers", { limit: number(planLimit) })}
+          <Link href="/billing" className="font-semibold underline">
+            {t("billing.upgradeCta")}
+          </Link>
+        </p>
+      )}
 
       <button
         type="submit"

@@ -103,6 +103,10 @@ All responses: `{ success, data?, message?, code?, errors? }`.
 | POST | `/api/auth/google` | Sign in with Google (ID token) |
 | GET | `/api/risk` | All customers' risk, riskiest first |
 | GET | `/api/customers/:id/risk` | One customer's risk + credit limit |
+| GET | `/api/reports/monthly`, `/api/reports/monthly/export` | Month report; CSV (Pro) |
+| GET/POST | `/api/billing`, `/api/billing/payments` | Plan, usage; report a bKash payment |
+| GET/POST/PATCH/DELETE | `/api/staff/...` | Team: invites, roles, accept, leave |
+| GET/POST | `/api/admin/payments[/:id/approve|reject]` | Operator only (`X-Admin-Key`) |
 | GET | `/api/health`, `/api/health/ready` | Liveness / readiness |
 
 ## Roadmap
@@ -115,4 +119,7 @@ All responses: `{ success, data?, message?, code?, errors? }`.
 - **Phase 3 (done):** explainable risk score per customer (on-time history, lateness,
   recency), suggested credit limit with owner override, warning before giving risky
   Baki, risk badges and a riskiest-customers list
-- **Phase 4:** subscriptions, multiple shops and staff, reports
+- **Phase 4 (done):** monthly reports (CSV/print), Free/Pro plans with limits, bKash
+  payments approved by the operator (`/api/admin/payments`, `X-Admin-Key`), staff
+  accounts with owner/manager/staff roles and "entered by" on every transaction.
+  Next: connect a payment gateway (bKash checkout / SSLCommerz) and multiple shops per owner.

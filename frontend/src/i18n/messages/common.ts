@@ -29,6 +29,7 @@ export const common = defineMessages({
     bangla: "বাংলা",
     english: "English",
     taka: "Taka",
+    noPermission: "You don't have permission to open this page. Ask the shop owner.",
   },
   bn: {
     appName: "বাকিগার্ড",
@@ -58,5 +59,6 @@ export const common = defineMessages({
     bangla: "বাংলা",
     english: "English",
     taka: "টাকা",
+    noPermission: "এই পাতাটি খোলার অনুমতি আপনার নেই। দোকান মালিককে জিজ্ঞেস করুন।",
   },
 });

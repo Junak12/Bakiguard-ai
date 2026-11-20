@@ -2,6 +2,7 @@ import type { Language } from "../format";
 import { ai } from "./ai";
 import { auth } from "./auth";
 import { collections, reminders, statement } from "./collections";
+import { billing, reports, team } from "./business";
 import { common } from "./common";
 import { customers } from "./customers";
 import { dashboard } from "./dashboard";
@@ -12,7 +13,7 @@ import { risk } from "./risk";
 import { settings } from "./settings";
 import { transactions } from "./transactions";
 
-const areas = { common, nav, auth, pwa, settings, dashboard, ai, customers, transactions, landing, collections, reminders, statement, risk };
+const areas = { common, nav, auth, pwa, settings, dashboard, ai, customers, transactions, landing, collections, reminders, statement, risk, reports, billing, team };
 
 type Areas = typeof areas;
 

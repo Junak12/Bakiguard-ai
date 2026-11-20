@@ -7,6 +7,7 @@ import { adoptAccountLanguage, useI18n } from "@/i18n/I18nProvider";
 import { getCurrentUser, restoreSession } from "@/lib/session";
 
 import Navbar from "./Navbar";
+import ShopBanner from "./ShopBanner";
 import Sidebar from "./Sidebar";
 
 interface DashboardLayoutProps {
@@ -60,7 +61,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <Navbar onMenuClick={() => setMobileOpen(true)} />
 
         <main className="flex-1 p-4 md:p-6 lg:p-8">
-          <div className="mx-auto max-w-400">{children}</div>
+          <div className="mx-auto max-w-400">
+            <ShopBanner />
+            {children}
+          </div>
         </main>
       </div>
     </div>

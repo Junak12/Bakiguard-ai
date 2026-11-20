@@ -4,6 +4,7 @@ import { useState } from "react";
 import Swal from "sweetalert2";
 import { BellRing, Copy, ExternalLink, RefreshCw } from "lucide-react";
 
+import { usePermissions } from "@/hooks/usePermissions";
 import { useI18n } from "@/i18n/I18nProvider";
 import { daysFromToday } from "@/i18n/format";
 import { rotateStatementLink, statementUrl } from "@/lib/reminders";
@@ -19,6 +20,7 @@ interface Props {
 /** Remind (WhatsApp/SMS/call) and share the customer's statement link. */
 export default function ReminderPanel({ customer }: Props) {
   const { t, number } = useI18n();
+  const { canResetLinks } = usePermissions();
 
   const [token, setToken] = useState(customer.statementToken ?? null);
   const [lastRemindedAt, setLastRemindedAt] = useState(customer.lastRemindedAt ?? null);
@@ -113,6 +115,7 @@ export default function ReminderPanel({ customer }: Props) {
             >
               <ExternalLink className="h-4 w-4" /> {t("statement.title")}
             </a>
+            {canResetLinks && (
             <button
               type="button"
               onClick={resetLink}
@@ -120,6 +123,7 @@ export default function ReminderPanel({ customer }: Props) {
             >
               <RefreshCw className="h-4 w-4" /> {t("reminders.resetLink")}
             </button>
+            )}
           </div>
         </div>
       )}

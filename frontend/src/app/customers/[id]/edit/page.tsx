@@ -8,6 +8,7 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 
 import CustomerForm from "@/components/customers/CustomerForm";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useI18n } from "@/i18n/I18nProvider";
 import { deleteCustomer, getCustomerById, updateCustomer } from "@/lib/customer";
 import { notifyDashboardUpdated } from "@/lib/dashboard-events";
@@ -25,6 +26,7 @@ export default function EditCustomerPage() {
 
 function EditCustomer() {
   const { t, money } = useI18n();
+  const { canRemoveCustomers } = usePermissions();
   const router = useRouter();
   const customerId = useParams<{ id: string }>().id;
 
@@ -113,7 +115,7 @@ function EditCustomer() {
         )}
       </div>
 
-      {customer && (
+      {customer && canRemoveCustomers && (
         <button
           type="button"
           onClick={handleRemove}

@@ -21,6 +21,13 @@ export interface SessionUser {
   paymentInfo: string | null;
   language: "bn" | "en";
   defaultCreditDays: number;
+
+  /** The shop this person works in (their own if owner). */
+  role: "owner" | "manager" | "staff";
+  shopId: string;
+  ownerName: string;
+  plan: "free" | "pro";
+  planExpiresAt: string | null;
 }
 
 let accessToken: string | null = null;

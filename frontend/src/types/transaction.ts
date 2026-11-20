@@ -18,6 +18,8 @@ export interface Transaction {
   dueDate?: string;
   /** CREDIT only: part not yet paid back. */
   outstanding?: number;
+  /** Who entered it (populated). */
+  createdBy?: { _id: string; name: string } | null;
   createdAt: string;
   updatedAt: string;
 }

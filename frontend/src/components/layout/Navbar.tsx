@@ -99,7 +99,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   const query = search.trim();
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between gap-2 border-b border-slate-200/80 bg-white/95 px-3 shadow-sm backdrop-blur-xl sm:h-20 sm:px-4 md:px-6">
+    <header className="sticky top-0 z-30 print:hidden flex h-16 w-full items-center justify-between gap-2 border-b border-slate-200/80 bg-white/95 px-3 shadow-sm backdrop-blur-xl sm:h-20 sm:px-4 md:px-6">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <button
           type="button"

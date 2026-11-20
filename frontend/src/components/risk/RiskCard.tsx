@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from "react";
 import { Gauge, Loader2, Minus, Plus } from "lucide-react";
 
+import { usePermissions } from "@/hooks/usePermissions";
 import { useI18n } from "@/i18n/I18nProvider";
 import { toAsciiDigits } from "@/i18n/format";
 import { setCreditLimit, type CustomerRiskResult } from "@/lib/risk";
@@ -24,6 +25,7 @@ interface Props {
 export default function RiskCard({ customerId, totalDue, result, failed, onChanged }: Props) {
   const { t, money, number } = useI18n();
   const { reasonText } = useRiskText();
+  const { canSetLimits } = usePermissions();
 
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
@@ -149,7 +151,7 @@ export default function RiskCard({ customerId, totalDue, result, failed, onChang
                 : t("risk.suggested", { amount: money(risk.suggestedLimit) })}
             </p>
 
-            {editing ? (
+            {!canSetLimits ? null : editing ? (
               <form onSubmit={submit} className="mt-3 flex gap-2" noValidate>
                 <input
                   value={value}

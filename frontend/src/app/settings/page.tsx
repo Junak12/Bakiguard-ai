@@ -5,6 +5,7 @@ import { CalendarClock, CheckCircle2, Languages, Loader2, Store } from "lucide-r
 
 import LanguageToggle from "@/components/i18n/LanguageToggle";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useSessionUser } from "@/hooks/useSessionUser";
 import { useI18n } from "@/i18n/I18nProvider";
 import { toAsciiDigits } from "@/i18n/format";
@@ -31,6 +32,7 @@ function SettingsForm() {
 
 function SettingsFields({ user }: { user: SessionUser }) {
   const { t } = useI18n();
+  const { canEditShopSettings } = usePermissions();
 
   // Shown once after first sign-in (?welcome=1). Read on mount: no Suspense needed.
   const [welcome] = useState(
@@ -66,12 +68,17 @@ function SettingsFields({ user }: { user: SessionUser }) {
     setSaving(true);
 
     try {
-      const updated = await updateProfile({
-        name: name.trim(),
-        defaultCreditDays: days,
-        paymentInfo: paymentInfo.trim(),
-        ...(shopName.trim() ? { shopName: shopName.trim() } : {}),
-      });
+      const updated = await updateProfile(
+        canEditShopSettings
+          ? {
+              name: name.trim(),
+              defaultCreditDays: days,
+              paymentInfo: paymentInfo.trim(),
+              ...(shopName.trim() ? { shopName: shopName.trim() } : {}),
+            }
+          : // Staff: only their own name; shop details belong to the owner.
+            { name: name.trim() }
+      );
 
       setCurrentUser(updated);
       setSaved(true);
@@ -133,6 +140,7 @@ function SettingsFields({ user }: { user: SessionUser }) {
               onChange={(event) => setShopName(event.target.value)}
               placeholder={t("settings.shopNamePlaceholder")}
               autoComplete="organization"
+              disabled={!canEditShopSettings}
               className={inputClass}
             />
           </label>
@@ -144,6 +152,7 @@ function SettingsFields({ user }: { user: SessionUser }) {
               onChange={(event) => setPaymentInfo(event.target.value)}
               placeholder={t("settings.paymentInfoPlaceholder")}
               maxLength={120}
+              disabled={!canEditShopSettings}
               className={inputClass}
             />
           </label>
@@ -175,6 +184,7 @@ function SettingsFields({ user }: { user: SessionUser }) {
               value={creditDays}
               onChange={(event) => setCreditDays(event.target.value)}
               inputMode="numeric"
+              disabled={!canEditShopSettings}
               className={`${inputClass} max-w-40`}
             />
           </label>

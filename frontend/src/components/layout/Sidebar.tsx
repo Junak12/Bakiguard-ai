@@ -4,8 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowLeftRight,
+  BarChart3,
   BellRing,
   BrainCircuit,
+  CreditCard,
+  UsersRound,
   LayoutDashboard,
   Settings,
   ShieldCheck,
@@ -13,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 
+import { usePermissions } from "@/hooks/usePermissions";
 import { useI18n, type TranslationKey } from "@/i18n/I18nProvider";
 
 interface SidebarProps {
@@ -20,18 +24,24 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-const navigation: { label: TranslationKey; href: string; icon: typeof Users }[] = [
+type Permission = "canSeeReports" | "canManageTeam" | "canManageBilling";
+
+const navigation: { label: TranslationKey; href: string; icon: typeof Users; needs?: Permission }[] = [
   { label: "nav.dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "collections.nav", href: "/collections", icon: BellRing },
   { label: "nav.customers", href: "/customers", icon: Users },
   { label: "nav.transactions", href: "/transactions", icon: ArrowLeftRight },
   { label: "nav.aiInsights", href: "/ai-insights", icon: BrainCircuit },
+  { label: "reports.nav", href: "/reports", icon: BarChart3, needs: "canSeeReports" },
+  { label: "team.nav", href: "/team", icon: UsersRound, needs: "canManageTeam" },
+  { label: "billing.nav", href: "/billing", icon: CreditCard, needs: "canManageBilling" },
   { label: "nav.settings", href: "/settings", icon: Settings },
 ];
 
 export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { t } = useI18n();
+  const permissions = usePermissions();
 
   return (
     <>
@@ -40,7 +50,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-zinc-200 bg-white transition-transform duration-300 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col print:hidden border-r border-zinc-200 bg-white transition-transform duration-300 lg:static lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -66,7 +76,9 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         </div>
 
         <nav className="flex-1 space-y-1 px-4 py-6">
-          {navigation.map(({ label, href, icon: Icon }) => {
+          {navigation
+            .filter(({ needs }) => !needs || permissions[needs])
+            .map(({ label, href, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(`${href}/`);
 
             return (
