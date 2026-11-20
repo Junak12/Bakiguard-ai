@@ -19,7 +19,6 @@ export default defineConfig({
       AI_SERVICE_URL: "http://127.0.0.1:9",
       AI_SERVICE_TIMEOUT_MS: "500",
       PHONE_LOGIN_ENABLED: "true",
-      GOOGLE_CLIENT_ID: "test-client.apps.googleusercontent.com",
       ADMIN_API_KEY: "test-admin-key-0123456789",
       BILLING_BKASH_NUMBER: "01700000000",
     },

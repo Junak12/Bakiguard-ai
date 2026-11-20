@@ -59,9 +59,6 @@ const envSchema = z.object({
     .default("false")
     .transform((value) => value === "true"),
 
-  // OAuth client ID(s) from Google Cloud Console (comma-separated).
-  // Empty disables "Sign in with Google".
-  GOOGLE_CLIENT_ID: z.string().default(""),
 
   // bKash number shop owners send subscription payments to (shown on the Upgrade page).
   BILLING_BKASH_NUMBER: z.string().default(""),
@@ -108,9 +105,6 @@ export const env = {
   ...parsed.data,
   isProduction: parsed.data.NODE_ENV === "production",
   isTest: parsed.data.NODE_ENV === "test",
-  googleClientIds: parsed.data.GOOGLE_CLIENT_ID.split(",")
-    .map((id) => id.trim())
-    .filter(Boolean),
   allowedOrigins: parsed.data.FRONTEND_URL.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),

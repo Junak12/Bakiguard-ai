@@ -52,7 +52,6 @@ services:
       AI_SERVICE_URL: http://ai-service:8000
       AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY}
       TRUST_PROXY: ${TRUST_PROXY:-0}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       BILLING_BKASH_NUMBER: ${BILLING_BKASH_NUMBER:-}
       ADMIN_API_KEY: ${ADMIN_API_KEY:-}
       PHONE_LOGIN_ENABLED: ${PHONE_LOGIN_ENABLED:-false}
@@ -67,7 +66,6 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:5000/api}
-        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
         NEXT_PUBLIC_PHONE_LOGIN: ${PHONE_LOGIN_ENABLED:-false}
     restart: unless-stopped
     depends_on:

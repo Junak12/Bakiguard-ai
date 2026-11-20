@@ -29,6 +29,8 @@ export async function listStaff(shopId: string) {
     avatarUrl: member.userId?.avatarUrl ?? null,
     acceptedAt: member.acceptedAt ?? null,
     createdAt: member.createdAt,
+    // Only pending invites still have a link to (re)share.
+    inviteToken: member.status === "invited" ? (member.inviteToken ?? null) : null,
   }));
 }
 
@@ -54,7 +56,13 @@ export async function inviteStaff(
       invitedBy: actorId,
     });
 
-    return { id: String(invite._id), email: invite.email, role: invite.role, status: invite.status };
+    return {
+      id: String(invite._id),
+      email: invite.email,
+      role: invite.role,
+      status: invite.status,
+      inviteToken: invite.inviteToken,
+    };
   } catch (error) {
     if ((error as { code?: number }).code === 11000) {
       throw AppError.conflict("This email is already invited.", "ALREADY_INVITED");
@@ -83,40 +91,41 @@ export async function removeStaff(shopId: string, membershipId: string) {
 }
 
 // ------------------------------------------------------------
-// The invited person's side
+// The invited person's side (holds the invite link)
 // ------------------------------------------------------------
 
-async function verifiedEmailOf(actorId: string) {
-  const user = await User.findById(actorId, { email: 1, googleId: 1 }).lean();
-
-  // Only Google sign-in proves the person owns the address.
-  return user?.googleId && user.email ? user.email : null;
-}
-
-export async function myInvites(actorId: string) {
-  const email = await verifiedEmailOf(actorId);
-
-  if (!email) return [];
-
-  const invites = await Membership.find({ email, status: "invited" })
-    .populate<{ shopId: { name: string; shopName?: string } }>({ path: "shopId", select: "name shopName" })
+async function findInvite(token: string) {
+  const invite = await Membership.findOne({ inviteToken: token, status: "invited" })
+    .populate<{ shopId: { _id: mongoose.Types.ObjectId; name: string; shopName?: string } }>({
+      path: "shopId",
+      select: "name shopName",
+    })
     .lean();
 
-  return invites.map((invite) => ({
-    id: String(invite._id),
-    role: invite.role,
-    shopName: invite.shopId?.shopName || invite.shopId?.name || "",
-    ownerName: invite.shopId?.name ?? "",
-  }));
+  if (!invite || !invite.shopId) {
+    throw AppError.notFound("This invite link is no longer valid. Ask the shop owner for a new one.");
+  }
+
+  return invite;
 }
 
-export async function acceptInvite(actorId: string, membershipId: string) {
-  if (!mongoose.isValidObjectId(membershipId)) throw AppError.badRequest("Invalid invite");
+/** What the link is for, so the person can decide before joining. */
+export async function previewInvite(token: string) {
+  const invite = await findInvite(token);
 
-  const email = await verifiedEmailOf(actorId);
+  return {
+    role: invite.role,
+    shopName: invite.shopId.shopName || invite.shopId.name,
+    ownerName: invite.shopId.name,
+  };
+}
 
-  if (!email) {
-    throw AppError.forbidden("Sign in with the Google account the invite was sent to.");
+/** Joins the shop behind an invite link. The link works once. */
+export async function joinWithToken(actorId: string, token: string) {
+  const invite = await findInvite(token);
+
+  if (String(invite.shopId._id) === actorId) {
+    throw AppError.badRequest("This is your own shop.", "INVITE_SELF");
   }
 
   const [ownCustomers, ownStaff, existing] = await Promise.all([
@@ -132,18 +141,21 @@ export async function acceptInvite(actorId: string, membershipId: string) {
   if (ownCustomers || ownStaff) {
     // Joining would hide their own khata; don't let that happen silently.
     throw AppError.conflict(
-      "You have your own shop with customers or staff, so you can't join another shop with this account.",
+      "This account has its own customers or staff, so it can't join another shop. Use a different account.",
       "HAS_OWN_SHOP"
     );
   }
 
   const member = await Membership.findOneAndUpdate(
-    { _id: membershipId, email, status: "invited" },
-    { $set: { userId: actorId, status: "active", acceptedAt: new Date() } },
+    { _id: invite._id, status: "invited" },
+    {
+      $set: { userId: actorId, status: "active", acceptedAt: new Date() },
+      $unset: { inviteToken: 1 },
+    },
     { returnDocument: "after" }
   ).lean();
 
-  if (!member) throw AppError.notFound("Invite not found or already used");
+  if (!member) throw AppError.notFound("This invite link was already used.");
 
   return { shopId: String(member.shopId), role: member.role };
 }

@@ -61,10 +61,9 @@ CI (`.github/workflows/ci.yml`) runs type checks, tests, builds and Docker build
 - **Customers are archived, never deleted**, so ledger history and shop totals stay
   correct. A customer who still owes money cannot be removed.
 - **Phone numbers are normalized** to `01XXXXXXXXX`.
-- **Login is "Sign in with Google"** for now (backend verifies the Google ID token
-  against `GOOGLE_CLIENT_ID`; an existing email account with the same verified address
-  is linked). **Phone + OTP is built but off** (`PHONE_LOGIN_ENABLED`,
-  `NEXT_PUBLIC_PHONE_LOGIN`): (6-digit SMS code, stored only as an HMAC, single use,
+- **Login is email + password** (bcrypt, rate-limited). Staff join through a secret,
+  single-use invite link the owner shares. **Phone + OTP is built but off**
+  (`PHONE_LOGIN_ENABLED`, `NEXT_PUBLIC_PHONE_LOGIN`): (6-digit SMS code, stored only as an HMAC, single use,
   5 attempts, 60s resend cooldown, 5 codes/hour/number). Email login remains for
   older accounts. SMS goes through a pluggable provider (`backend/src/services/sms/`);
   `console` prints codes to the log for development.
@@ -87,7 +86,7 @@ All responses: `{ success, data?, message?, code?, errors? }`.
 | Method | Path | |
 |---|---|---|
 | POST | `/api/auth/otp/request`, `/api/auth/otp/verify` | Phone login/sign-up; rate-limited |
-| POST | `/api/auth/register`, `/api/auth/login` | Email accounts; rate-limited |
+| POST | `/api/auth/register`, `/api/auth/login` | Email + password; rate-limited |
 | POST | `/api/auth/refresh`, `/api/auth/logout` | Cookie-based |
 | GET/PATCH | `/api/auth/me` | Profile: shop name, language, default credit days |
 | GET/POST | `/api/customers` | `?search=`, `?status=due` or `overdue` |
@@ -100,12 +99,11 @@ All responses: `{ success, data?, message?, code?, errors? }`.
 | GET/POST | `/api/customers/:id/reminders` | Reminder log |
 | POST | `/api/customers/:id/statement-link` | New statement link (revokes the old one) |
 | GET | `/api/public/statements/:token` | Public statement (no login) |
-| POST | `/api/auth/google` | Sign in with Google (ID token) |
 | GET | `/api/risk` | All customers' risk, riskiest first |
 | GET | `/api/customers/:id/risk` | One customer's risk + credit limit |
 | GET | `/api/reports/monthly`, `/api/reports/monthly/export` | Month report; CSV (Pro) |
 | GET/POST | `/api/billing`, `/api/billing/payments` | Plan, usage; report a bKash payment |
-| GET/POST/PATCH/DELETE | `/api/staff/...` | Team: invites, roles, accept, leave |
+| GET/POST/PATCH/DELETE | `/api/staff/...` | Team: invite links, join, roles, leave |
 | GET/POST | `/api/admin/payments[/:id/approve|reject]` | Operator only (`X-Admin-Key`) |
 | GET | `/api/health`, `/api/health/ready` | Liveness / readiness |
 

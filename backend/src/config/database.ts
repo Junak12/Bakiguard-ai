@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 import { Customer, newStatementToken } from "../model/Customer.js";
-import { Membership } from "../model/Membership.js";
+import { Membership, newInviteToken } from "../model/Membership.js";
 import { Otp } from "../model/Otp.js";
 import { Payment } from "../model/Payment.js";
 import { Reminder } from "../model/Reminder.js";
@@ -68,6 +68,16 @@ export async function prepareDatabase() {
       }))
     );
     logger.info({ count: withoutToken.length }, "Created statement links for existing customers");
+  }
+
+  // Pending staff invites created before invite links existed.
+  const linkless = await Membership.find(
+    { status: "invited", inviteToken: { $exists: false } },
+    { _id: 1 }
+  ).lean();
+
+  for (const { _id } of linkless) {
+    await Membership.updateOne({ _id }, { $set: { inviteToken: newInviteToken() } });
   }
 
   // Ledgers recorded before due dates existed.

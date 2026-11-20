@@ -93,13 +93,18 @@ export interface TeamMember {
   status: "invited" | "active";
   name: string | null;
   avatarUrl: string | null;
+  /** Pending invites only: the secret for the invite link. */
+  inviteToken: string | null;
 }
 
-export interface Invite {
-  id: string;
+export interface InvitePreview {
   role: StaffRole;
   shopName: string;
   ownerName: string;
+}
+
+export function inviteUrl(token: string) {
+  return `${window.location.origin}/join/${token}`;
 }
 
 export async function getTeam() {
@@ -108,7 +113,8 @@ export async function getTeam() {
 }
 
 export async function inviteMember(email: string, role: StaffRole) {
-  await api.post("/staff/invites", { email, role });
+  const response = await api.post<{ data: { inviteToken: string } }>("/staff/invites", { email, role });
+  return response.data.data.inviteToken;
 }
 
 export async function changeMemberRole(id: string, role: StaffRole) {
@@ -119,13 +125,13 @@ export async function removeMember(id: string) {
   await api.delete(`/staff/${id}`);
 }
 
-export async function getMyInvites() {
-  const response = await api.get<{ data: Invite[] }>("/staff/my-invites");
+export async function previewInvite(token: string) {
+  const response = await api.get<{ data: InvitePreview }>(`/staff/join/${encodeURIComponent(token)}`);
   return response.data.data;
 }
 
-export async function acceptInvite(id: string) {
-  await api.post(`/staff/my-invites/${id}/accept`);
+export async function joinShop(token: string) {
+  await api.post(`/staff/join/${encodeURIComponent(token)}`);
 }
 
 export async function leaveShop() {
