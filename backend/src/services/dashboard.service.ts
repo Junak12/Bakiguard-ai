@@ -1,31 +1,51 @@
-import { Customer } from "../model/Customer";
-import { Transaction } from "../model/Transaction";
+import mongoose from "mongoose";
 
+import { Customer } from "../model/Customer.js";
+import { Transaction } from "../model/Transaction.js";
 
-export async function getDashboardStats() {
-  const totalCustomers = await Customer.countDocuments();
+export interface DashboardStats {
+  totalCustomers: number;
+  totalCredit: number;
+  totalPayment: number;
+  /** Sum of every customer's current balance: the money owed to the shop right now. */
+  totalBaki: number;
+}
 
-  const transactions = await Transaction.find();
+export async function getDashboardStats(userId: string): Promise<DashboardStats> {
+  const userObjectId = new mongoose.Types.ObjectId(userId);
 
-  let totalCredit = 0;
-  let totalPayment = 0;
+  const [customerTotals, transactionTotals] = await Promise.all([
+    Customer.aggregate<{ totalCustomers: number; totalBaki: number }>([
+      { $match: { userId: userObjectId, isArchived: false } },
+      {
+        $group: {
+          _id: null,
+          totalCustomers: { $sum: 1 },
+          totalBaki: { $sum: "$totalDue" },
+        },
+      },
+    ]),
 
-  for (const transaction of transactions) {
-    if (transaction.type === "CREDIT") {
-      totalCredit += transaction.amount;
-    }
-
-    if (transaction.type === "PAYMENT") {
-      totalPayment += transaction.amount;
-    }
-  }
-
-  const totalBaki = totalCredit - totalPayment;
+    Transaction.aggregate<{ totalCredit: number; totalPayment: number }>([
+      { $match: { userId: userObjectId } },
+      {
+        $group: {
+          _id: null,
+          totalCredit: {
+            $sum: { $cond: [{ $eq: ["$type", "CREDIT"] }, "$amount", 0] },
+          },
+          totalPayment: {
+            $sum: { $cond: [{ $eq: ["$type", "PAYMENT"] }, "$amount", 0] },
+          },
+        },
+      },
+    ]),
+  ]);
 
   return {
-    totalCustomers,
-    totalCredit,
-    totalPayment,
-    totalBaki,
+    totalCustomers: customerTotals[0]?.totalCustomers ?? 0,
+    totalBaki: customerTotals[0]?.totalBaki ?? 0,
+    totalCredit: transactionTotals[0]?.totalCredit ?? 0,
+    totalPayment: transactionTotals[0]?.totalPayment ?? 0,
   };
 }

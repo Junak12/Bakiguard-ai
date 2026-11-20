@@ -1,0 +1,79 @@
+# Full BakiGuard stack on one machine.
+#
+#   cp .env.example .env      # then fill in the secrets
+#   docker compose up --build
+#
+# App: http://localhost:3000   API: http://localhost:5000/api/health
+
+services:
+  mongo:
+    image: mongo:8
+    # A single-node replica set: required for multi-document transactions.
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "127.0.0.1:27017:27017"
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] }).ok }"
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+
+  ai-service:
+    build: ./ai-service
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY:?set AI_SERVICE_API_KEY in .env}
+    # Internal only: not published to the host.
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: mongodb://mongo:27017/bakiguard?replicaSet=rs0
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      AI_SERVICE_URL: http://ai-service:8000
+      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY}
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      BILLING_BKASH_NUMBER: ${BILLING_BKASH_NUMBER:-}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
+      PHONE_LOGIN_ENABLED: ${PHONE_LOGIN_ENABLED:-false}
+      SMS_PROVIDER: ${SMS_PROVIDER:-console}
+      # Local demo only: login codes appear in `docker compose logs backend`.
+      ALLOW_CONSOLE_SMS: ${ALLOW_CONSOLE_SMS:-true}
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:5000/api}
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+        NEXT_PUBLIC_PHONE_LOGIN: ${PHONE_LOGIN_ENABLED:-false}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  mongo-data:

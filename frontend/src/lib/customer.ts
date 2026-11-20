@@ -4,8 +4,14 @@ import {
   CreateCustomerData,
 } from "@/types/customer";
 
-export async function getCustomers(): Promise<Customer[]> {
-  const response = await api.get("/customers");
+export interface CustomerListParams {
+  search?: string;
+  /** "due": owes anything. "overdue": has money past its due date. */
+  status?: "all" | "due" | "overdue";
+}
+
+export async function getCustomers(params: CustomerListParams = {}): Promise<Customer[]> {
+  const response = await api.get("/customers", { params });
 
   return response.data.data;
 }

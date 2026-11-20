@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import { bdPhoneSchema } from "./common.validator.js";
+
+export { bdPhoneSchema };
+
 export const createCustomerSchema = z.object({
   name: z
     .string()
@@ -7,11 +11,7 @@ export const createCustomerSchema = z.object({
     .min(2, "Name must be at least 2 characters")
     .max(100, "Name cannot exceed 100 characters"),
 
-  phone: z
-    .string()
-    .trim()
-    .min(10, "Phone number is too short")
-    .max(15, "Phone number is too long"),
+  phone: bdPhoneSchema,
 
   address: z
     .string()
@@ -20,12 +20,26 @@ export const createCustomerSchema = z.object({
     .optional(),
 });
 
-export const updateCustomerSchema = createCustomerSchema.partial();
+export const updateCustomerSchema = createCustomerSchema
+  .extend({
+    // null clears the owner's limit (back to the suggested one).
+    creditLimit: z
+      .number()
+      .int("Limit must be a whole number of Taka")
+      .min(0)
+      .max(100_000_000)
+      .nullable(),
+  })
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "Nothing to update",
+  });
 
-export type CreateCustomerInput = z.infer<
-  typeof createCustomerSchema
->;
+export const listCustomersQuerySchema = z.object({
+  search: z.string().trim().max(100).optional(),
+  status: z.enum(["all", "due", "overdue"]).default("all"),
+});
 
-export type UpdateCustomerInput = z.infer<
-  typeof updateCustomerSchema
->;
+export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
+
+export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;

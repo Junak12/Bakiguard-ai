@@ -1,10 +1,47 @@
-import { Router } from "express";
-import { getMe, login, register } from "../controllers/auth.controller";
-import { authenticate } from "../middleware/auth.middleware";
+import { Router, type NextFunction, type Request, type Response } from "express";
+
+import { env } from "../config/env.js";
+import { AppError } from "../utils/AppError.js";
+
+import {
+  getMe,
+  googleLogin,
+  login,
+  logout,
+  refresh,
+  register,
+  requestOtp,
+  updateMe,
+  verifyOtp,
+} from "../controllers/auth.controller.js";
+import { authenticate } from "../middleware/auth.middleware.js";
+import { authLimiter, otpSendLimiter } from "../middleware/rateLimit.middleware.js";
 
 const router = Router();
-router.post("/register", register);
-router.post("/login", login);
+
+/** Phone login is built but off until an SMS provider is chosen (PHONE_LOGIN_ENABLED). */
+function requirePhoneLogin(_req: Request, _res: Response, next: NextFunction) {
+  if (!env.PHONE_LOGIN_ENABLED) {
+    return next(new AppError(404, "Phone login is not available yet", "PHONE_LOGIN_DISABLED"));
+  }
+  next();
+}
+
+// Google (primary)
+router.post("/google", authLimiter, googleLogin);
+
+// Phone + OTP (switched off for now)
+router.post("/otp/request", requirePhoneLogin, otpSendLimiter, requestOtp);
+router.post("/otp/verify", requirePhoneLogin, authLimiter, verifyOtp);
+
+// Email + password (legacy accounts)
+router.post("/register", authLimiter, register);
+router.post("/login", authLimiter, login);
+
+router.post("/refresh", refresh);
+router.post("/logout", logout);
+
 router.get("/me", authenticate, getMe);
+router.patch("/me", authenticate, updateMe);
 
 export default router;

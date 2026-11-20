@@ -1,47 +1,96 @@
 import mongoose from "mongoose";
-import type { CreateTransactionInput } from "../validators/transaction.validator";
-import { Customer } from "../model/Customer";
-import { Transaction } from "../model/Transaction";
 
+import { Customer } from "../model/Customer.js";
+import { Transaction, type ITransaction } from "../model/Transaction.js";
+import { User } from "../model/User.js";
+import { AppError } from "../utils/AppError.js";
+import type { Pagination } from "../validators/common.validator.js";
+import type {
+  CreateTransactionInput,
+  TransactionFilters,
+} from "../validators/transaction.validator.js";
+import { refreshRiskInBackground } from "./risk.service.js";
+import {
+  addDays,
+  LEGACY_CREDIT_DAYS,
+  refreshNextDue,
+  settleCreditsFifo,
+} from "./ledger.service.js";
+
+function paginationMeta({ page, limit }: Pagination, total: number) {
+  return {
+    page,
+    limit,
+    total,
+    totalPages: Math.ceil(total / limit),
+  };
+}
+
+/**
+ * Records a CREDIT (customer took goods on Baki) or a PAYMENT (customer paid)
+ * and updates the customer's balance in the same database transaction.
+ *
+ * The balance change is a single conditional $inc, so two payments recorded
+ * at the same moment can never take a balance below zero.
+ *
+ * Credits get a due date (given, or the shop's default term). Payments settle
+ * the oldest unpaid credits first, keeping per-credit `outstanding` in sync.
+ */
 export async function createTransaction(
   userId: string,
-  input: CreateTransactionInput
+  input: CreateTransactionInput,
+  actorId: string = userId
 ) {
   const session = await mongoose.startSession();
 
   try {
-    session.startTransaction();
+    let created: ITransaction | undefined;
 
-    const customer = await Customer.findOne({
-      _id: input.customerId,
-      userId,
-    }).session(session);
+    // withTransaction retries automatically on transient write conflicts.
+    await session.withTransaction(async () => {
+      const now = new Date();
+      const isPayment = input.type === "PAYMENT";
 
-    if (!customer) {
-      const error = new Error(
-        "Customer not found."
+      const customer = await Customer.findOneAndUpdate(
+        {
+          _id: input.customerId,
+          userId,
+          isArchived: false,
+          ...(isPayment ? { totalDue: { $gte: input.amount } } : {}),
+        },
+        {
+          $inc: { totalDue: isPayment ? -input.amount : input.amount },
+          $set: isPayment ? { lastPaymentAt: now } : { lastCreditAt: now },
+        },
+        { returnDocument: "after", session }
       );
 
-      (error as any).statusCode = 404;
+      if (!customer) {
+        // Work out which condition failed, to give a useful message.
+        const exists = await Customer.findOne(
+          { _id: input.customerId, userId, isArchived: false },
+          { totalDue: 1 },
+          { session }
+        ).lean();
 
-      throw error;
-    }
+        if (!exists) {
+          throw AppError.notFound("Customer not found");
+        }
 
-    if (
-      input.type === "PAYMENT" &&
-      input.amount > customer.totalDue
-    ) {
-      const error = new Error(
-        "Payment cannot be greater than the current Baki."
-      );
+        throw AppError.badRequest(
+          `Payment cannot be more than the current Baki (৳${exists.totalDue.toLocaleString("en-US")}).`,
+          "PAYMENT_EXCEEDS_DUE"
+        );
+      }
 
-      (error as any).statusCode = 400;
+      let dueDate: Date | undefined;
 
-      throw error;
-    }
+      if (!isPayment) {
+        const owner = await User.findById(userId, { defaultCreditDays: 1 }, { session }).lean();
+        dueDate = input.dueDate ?? addDays(now, owner?.defaultCreditDays ?? LEGACY_CREDIT_DAYS);
+      }
 
-    const transaction =
-      await Transaction.create(
+      [created] = await Transaction.create(
         [
           {
             userId,
@@ -49,26 +98,24 @@ export async function createTransaction(
             type: input.type,
             amount: input.amount,
             description: input.description,
+            createdBy: actorId,
+            ...(isPayment ? {} : { dueDate, outstanding: input.amount }),
           },
         ],
         { session }
       );
 
-    if (input.type === "CREDIT") {
-      customer.totalDue += input.amount;
-    } else {
-      customer.totalDue -= input.amount;
-    }
+      if (isPayment) {
+        await settleCreditsFifo(userId, input.customerId, input.amount, session);
+      }
 
-    await customer.save({ session });
+      await refreshNextDue(userId, input.customerId, session);
+    });
 
-    await session.commitTransaction();
+    // Payment behaviour changed: re-score this customer (doesn't delay the response).
+    refreshRiskInBackground(userId, input.customerId);
 
-    return transaction[0];
-  } catch (error) {
-    await session.abortTransaction();
-
-    throw error;
+    return created!;
   } finally {
     await session.endSession();
   }
@@ -77,46 +124,118 @@ export async function createTransaction(
 export async function getCustomerTransactions(
   userId: string,
   customerId: string,
-  page: number,
-  limit: number
+  pagination: Pagination
 ) {
-  const customer = await Customer.findOne({
-    _id: customerId,
-    userId,
-  });
+  const customerExists = await Customer.exists({ _id: customerId, userId });
 
-  if (!customer) {
-    const error = new Error("Customer not found.");
-    (error as any).statusCode = 404;
-    throw error;
+  if (!customerExists) {
+    throw AppError.notFound("Customer not found");
   }
 
-  const skip = (page - 1) * limit;
+  const filter = {
+    userId: new mongoose.Types.ObjectId(userId),
+    customerId: new mongoose.Types.ObjectId(customerId),
+  };
 
-  const [transactions, total] = await Promise.all([
-    Transaction.find({
-      userId,
-      customerId,
-    })
+  const [transactions, total, summary] = await Promise.all([
+    Transaction.find(filter)
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
+      .skip((pagination.page - 1) * pagination.limit)
+      .limit(pagination.limit)
+      .populate({ path: "createdBy", select: "name" })
       .select("-__v")
       .lean(),
 
-    Transaction.countDocuments({
-      userId,
-      customerId,
-    }),
+    Transaction.countDocuments(filter),
+
+    Transaction.aggregate<{
+      totalCredit: number;
+      totalPayment: number;
+      creditCount: number;
+      paymentCount: number;
+    }>([
+      { $match: filter },
+      {
+        $group: {
+          _id: null,
+          totalCredit: {
+            $sum: { $cond: [{ $eq: ["$type", "CREDIT"] }, "$amount", 0] },
+          },
+          totalPayment: {
+            $sum: { $cond: [{ $eq: ["$type", "PAYMENT"] }, "$amount", 0] },
+          },
+          creditCount: {
+            $sum: { $cond: [{ $eq: ["$type", "CREDIT"] }, 1, 0] },
+          },
+          paymentCount: {
+            $sum: { $cond: [{ $eq: ["$type", "PAYMENT"] }, 1, 0] },
+          },
+        },
+      },
+      { $project: { _id: 0 } },
+    ]),
   ]);
 
   return {
     transactions,
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
+    summary: summary[0] ?? {
+      totalCredit: 0,
+      totalPayment: 0,
+      creditCount: 0,
+      paymentCount: 0,
     },
+    pagination: paginationMeta(pagination, total),
+  };
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export async function getTransactions(
+  userId: string,
+  pagination: Pagination,
+  filters: TransactionFilters = {}
+) {
+  const filter: Record<string, unknown> = { userId };
+
+  if (filters.type) {
+    filter.type = filters.type;
+  }
+
+  if (filters.from || filters.to) {
+    filter.createdAt = {
+      ...(filters.from ? { $gte: filters.from } : {}),
+      ...(filters.to ? { $lte: filters.to } : {}),
+    };
+  }
+
+  if (filters.search) {
+    // Includes archived customers so their history is still searchable.
+    const pattern = new RegExp(escapeRegex(filters.search), "i");
+    const matches = await Customer.find(
+      { userId, $or: [{ name: pattern }, { phone: pattern }] },
+      { _id: 1 }
+    ).lean();
+
+    filter.customerId = { $in: matches.map((customer) => customer._id) };
+  }
+
+  const [transactions, total] = await Promise.all([
+    Transaction.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((pagination.page - 1) * pagination.limit)
+      .limit(pagination.limit)
+      .populate({ path: "customerId", select: "name phone" })
+      .populate({ path: "createdBy", select: "name" })
+      .select("-__v")
+      .lean(),
+
+    Transaction.countDocuments(filter),
+  ]);
+
+  return {
+    transactions,
+    pagination: paginationMeta(pagination, total),
   };
 }

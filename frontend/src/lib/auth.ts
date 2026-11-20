@@ -1,24 +1,82 @@
 import api from "./api";
+import { setSession, type SessionUser } from "./session";
 
-interface LoginData {
-  email: string;
-  password: string;
+interface AuthResponse {
+  success: boolean;
+  message: string;
+  data: {
+    user: SessionUser;
+    accessToken: string;
+    isNewUser?: boolean;
+  };
 }
 
-interface RegisterData {
-  name: string;
-  email: string;
-  password: string;
+export interface OtpRequestResult {
+  isNewUser: boolean;
+  expiresInSeconds: number;
+  resendAfterSeconds: number;
 }
 
-export async function loginUser(data: LoginData) {
-  const response = await api.post("/auth/login", data);
+// ------------------------------------------------------------
+// Phone + OTP
+// ------------------------------------------------------------
 
-  return response.data;
+export async function requestOtp(phone: string) {
+  const response = await api.post<{ data: OtpRequestResult }>("/auth/otp/request", { phone });
+  return response.data.data;
 }
 
-export async function registerUser(data: RegisterData) {
-  const response = await api.post("/auth/register", data);
+export async function verifyOtp(input: {
+  phone: string;
+  code: string;
+  name?: string;
+  shopName?: string;
+}) {
+  const response = await api.post<AuthResponse>("/auth/otp/verify", input);
 
-  return response.data;
+  setSession(response.data.data.accessToken, response.data.data.user);
+
+  return response.data.data;
 }
+
+// ------------------------------------------------------------
+// Google
+// ------------------------------------------------------------
+
+/** Exchanges a Google Identity Services ID token for a BakiGuard session. */
+export async function googleLogin(credential: string) {
+  const response = await api.post<AuthResponse>("/auth/google", { credential });
+
+  setSession(response.data.data.accessToken, response.data.data.user);
+
+  return response.data.data;
+}
+
+// ------------------------------------------------------------
+// Email + password (older accounts)
+// ------------------------------------------------------------
+
+export async function loginUser(data: { email: string; password: string }) {
+  const response = await api.post<AuthResponse>("/auth/login", data);
+
+  setSession(response.data.data.accessToken, response.data.data.user);
+
+  return response.data.data;
+}
+
+// ------------------------------------------------------------
+// Profile
+// ------------------------------------------------------------
+
+export async function updateProfile(
+  data: Partial<
+    Pick<SessionUser, "name" | "shopName" | "language" | "defaultCreditDays"> & {
+      paymentInfo: string;
+    }
+  >
+) {
+  const response = await api.patch<{ data: SessionUser }>("/auth/me", data);
+  return response.data.data;
+}
+
+export { logout, restoreSession } from "./session";

@@ -1,0 +1,38 @@
+import { defineMessages } from "./define";
+
+export const transactions = defineMessages({
+  en: {
+    title: "Transactions",
+    subtitle: "Every Baki and payment across your shop.",
+    searchPlaceholder: "Search by customer name or phone...",
+    types: { all: "All", credit: "Baki given", payment: "Payments" },
+    periods: { all: "All time", today: "Today", week: "Last 7 days", month: "This month" },
+    total: "{count} transactions",
+    loadError: "Couldn't load transactions.",
+    empty: "No transactions yet.",
+    emptyFiltered: "No transactions match these filters.",
+    clearFilters: "Clear filters",
+    credit: "Baki given",
+    payment: "Payment received",
+    pageOf: "Page {page} of {total}",
+    previous: "Previous",
+    next: "Next",
+  },
+  bn: {
+    title: "লেনদেন",
+    subtitle: "দোকানের সব বাকি ও জমার হিসাব।",
+    searchPlaceholder: "কাস্টমারের নাম বা ফোন দিয়ে খুঁজুন...",
+    types: { all: "সব", credit: "বাকি দেওয়া", payment: "জমা" },
+    periods: { all: "সব সময়", today: "আজ", week: "গত ৭ দিন", month: "এই মাস" },
+    total: "{count}টি লেনদেন",
+    loadError: "লেনদেন লোড করা যায়নি।",
+    empty: "এখনো কোনো লেনদেন নেই।",
+    emptyFiltered: "এই ফিল্টারে কোনো লেনদেন নেই।",
+    clearFilters: "ফিল্টার মুছুন",
+    credit: "বাকি দেওয়া",
+    payment: "টাকা জমা",
+    pageOf: "পৃষ্ঠা {page} / {total}",
+    previous: "আগের",
+    next: "পরের",
+  },
+});
