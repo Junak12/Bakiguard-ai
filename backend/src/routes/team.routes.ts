@@ -1,14 +1,14 @@
 import { Router } from "express";
 
 import {
-  accept,
   adminApprove,
   adminListPayments,
   adminReject,
   billing,
-  getMyInvites,
+  getInvite,
   getStaff,
   invite,
+  join,
   leave,
   remove,
   reportPayment,
@@ -22,9 +22,9 @@ export const staffRoutes = Router();
 
 staffRoutes.use(authenticate);
 
-// The invited person's side (any signed-in user).
-staffRoutes.get("/my-invites", getMyInvites);
-staffRoutes.post("/my-invites/:id/accept", accept);
+// The invited person's side: anyone signed in who holds the link.
+staffRoutes.get("/join/:token", getInvite);
+staffRoutes.post("/join/:token", authLimiter, join);
 staffRoutes.post("/leave", leave);
 
 // The owner's side.

@@ -1,26 +1,11 @@
 import { Customer } from "../src/model/Customer.js";
 import { Transaction } from "../src/model/Transaction.js";
 import { User } from "../src/model/User.js";
-import type { GoogleProfile } from "../src/services/google.service.js";
 import { api, createCustomer, recordTransaction, registerUser } from "./helpers.js";
-
-// Staff sign in with Google; the verifier is stubbed (see google.test.ts).
-const google = vi.hoisted(() => ({ profile: null as GoogleProfile | null }));
-
-vi.mock("../src/services/google.service.js", () => ({
-  verifyGoogleIdToken: async () => google.profile!,
-}));
 
 const ADMIN = { "X-Admin-Key": "test-admin-key-0123456789" };
 
 let counter = 0;
-
-async function googleUser(email: string, name = "Staff Person") {
-  counter += 1;
-  google.profile = { googleId: `g-${counter}-${email}`, email, name };
-  const response = await api().post("/api/auth/google").send({ credential: "x".repeat(40) });
-  return { auth: { Authorization: `Bearer ${response.body.data.accessToken}` }, user: response.body.data.user };
-}
 
 async function makePro(auth: Record<string, string>) {
   const me = await api().get("/api/auth/me").set(auth);
@@ -39,14 +24,17 @@ async function shopWithStaff(role: "staff" | "manager" = "staff") {
   const email = `staff${++counter}@gmail.com`;
   const invite = await api().post("/api/staff/invites").set(owner.auth).send({ email, role });
   expect(invite.status).toBe(201);
+  const token = invite.body.data.inviteToken as string;
+  expect(token).toMatch(/^[A-Za-z0-9_-]{32}$/);
 
-  const staff = await googleUser(email);
-  const invites = await api().get("/api/staff/my-invites").set(staff.auth);
-  expect(invites.body.data).toHaveLength(1);
-  expect(invites.body.data[0]).toMatchObject({ shopName: "Rahim Store", role });
+  // The owner sends the link; the staff member signs up with email + password.
+  const staff = await registerUser({ name: "Staff Person", email });
 
-  const accepted = await api().post(`/api/staff/my-invites/${invites.body.data[0].id}/accept`).set(staff.auth);
-  expect(accepted.status).toBe(200);
+  const preview = await api().get(`/api/staff/join/${token}`).set(staff.auth);
+  expect(preview.body.data).toMatchObject({ shopName: "Rahim Store", role });
+
+  const joined = await api().post(`/api/staff/join/${token}`).set(staff.auth);
+  expect(joined.status).toBe(200);
 
   return { owner, staff, email };
 }
@@ -131,22 +119,38 @@ describe("staff accounts", () => {
     expect((await api().get("/api/auth/me").set(staff.auth)).body.data.role).toBe("owner");
   });
 
-  it("only a Google account with the invited email can accept", async () => {
+  it("an invite link works once, and only while the invite exists", async () => {
     const owner = await registerUser();
     await makePro(owner.auth);
-    await api().post("/api/staff/invites").set(owner.auth).send({ email: "victim@gmail.com", role: "manager" });
+    const invite = await api().post("/api/staff/invites").set(owner.auth).send({ email: "a@gmail.com", role: "staff" });
+    const token = invite.body.data.inviteToken;
 
-    // Someone registers an email+password account with that address (unverified).
-    const impostor = await registerUser({ email: "victim@gmail.com" });
-    expect((await api().get("/api/staff/my-invites").set(impostor.auth)).body.data).toEqual([]);
+    const first = await registerUser();
+    expect((await api().post(`/api/staff/join/${token}`).set(first.auth)).status).toBe(200);
 
-    const invite = (await api().get("/api/staff").set(owner.auth)).body.data[0];
-    const attempt = await api().post(`/api/staff/my-invites/${invite.id}/accept`).set(impostor.auth);
-    expect(attempt.status).toBe(403);
+    // Used: the link is dead, and the owner's list no longer exposes it.
+    const second = await registerUser();
+    expect((await api().post(`/api/staff/join/${token}`).set(second.auth)).status).toBe(404);
+    const members = (await api().get("/api/staff").set(owner.auth)).body.data;
+    expect(members[0]).toMatchObject({ status: "active", inviteToken: null });
 
-    // A different Google account can't take it either.
-    const other = await googleUser("other@gmail.com");
-    expect((await api().post(`/api/staff/my-invites/${invite.id}/accept`).set(other.auth)).status).toBe(404);
+    // Cancelled invite: link stops working.
+    const another = await api().post("/api/staff/invites").set(owner.auth).send({ email: "b@gmail.com", role: "staff" });
+    await api().delete(`/api/staff/${another.body.data.id}`).set(owner.auth);
+    expect((await api().post(`/api/staff/join/${another.body.data.inviteToken}`).set(second.auth)).status).toBe(404);
+
+    // Garbage and own-shop links.
+    expect((await api().post("/api/staff/join/not-a-token").set(second.auth)).status).toBe(400);
+    const own = await api().post("/api/staff/invites").set(owner.auth).send({ email: "c@gmail.com", role: "staff" });
+    expect((await api().post(`/api/staff/join/${own.body.data.inviteToken}`).set(owner.auth)).status).toBe(400);
+  });
+
+  it("joining needs a signed-in account", async () => {
+    const owner = await registerUser();
+    await makePro(owner.auth);
+    const invite = await api().post("/api/staff/invites").set(owner.auth).send({ email: "d@gmail.com", role: "staff" });
+
+    expect((await api().post(`/api/staff/join/${invite.body.data.inviteToken}`)).status).toBe(401);
   });
 
   it("won't let someone with their own customers join another shop", async () => {
@@ -154,11 +158,11 @@ describe("staff accounts", () => {
     await makePro(owner.auth);
     await api().post("/api/staff/invites").set(owner.auth).send({ email: "busy@gmail.com", role: "staff" });
 
-    const busy = await googleUser("busy@gmail.com");
+    const busy = await registerUser({ email: "busy@gmail.com" });
     await createCustomer(busy.auth);
 
-    const invite = (await api().get("/api/staff/my-invites").set(busy.auth)).body.data[0];
-    const attempt = await api().post(`/api/staff/my-invites/${invite.id}/accept`).set(busy.auth);
+    const token = (await api().get("/api/staff").set(owner.auth)).body.data[0].inviteToken;
+    const attempt = await api().post(`/api/staff/join/${token}`).set(busy.auth);
 
     expect(attempt.status).toBe(409);
     expect(attempt.body.code).toBe("HAS_OWN_SHOP");

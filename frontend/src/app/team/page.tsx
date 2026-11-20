@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import Swal from "sweetalert2";
-import { Crown, Loader2, Mail, UserPlus } from "lucide-react";
+import { Copy, Crown, Link2, Loader2, Mail, MessageCircle, UserPlus } from "lucide-react";
 
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import NoPermission from "@/components/layout/NoPermission";
@@ -14,6 +14,7 @@ import {
   changeMemberRole,
   getTeam,
   inviteMember,
+  inviteUrl,
   removeMember,
   type StaffRole,
   type TeamMember,
@@ -46,6 +47,23 @@ function Team() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [needsPro, setNeedsPro] = useState(false);
+  // The link for the invite just created, shown until the owner moves on.
+  const [newLink, setNewLink] = useState<{ email: string; url: string } | null>(null);
+
+  const shopName = user?.shopName || user?.name || "";
+
+  async function copy(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      toastSuccess(t("team.linkCopied"));
+    } catch {
+      toastError(t("common.somethingWrong"));
+    }
+  }
+
+  function whatsappHref(url: string) {
+    return `https://wa.me/?text=${encodeURIComponent(t("team.whatsappText", { shop: shopName, link: url }))}`;
+  }
 
   useEffect(() => {
     let active = true;
@@ -72,8 +90,9 @@ function Team() {
     setSending(true);
 
     try {
-      await inviteMember(clean, role);
+      const token = await inviteMember(clean, role);
       toastSuccess(t("team.invited", { email: clean }));
+      setNewLink({ email: clean, url: inviteUrl(token) });
       setEmail("");
       setReloadKey((key) => key + 1);
     } catch (err) {
@@ -200,6 +219,33 @@ function Team() {
             {sending ? t("team.inviting") : t("team.invite")}
           </button>
         </form>
+
+        {newLink && (
+          <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
+              <Link2 className="h-4 w-4" /> {t("team.linkTitle")} · {newLink.email}
+            </p>
+            <p className="mt-2 truncate rounded-lg bg-white px-3 py-2 font-mono text-xs text-slate-600">{newLink.url}</p>
+            <p className="mt-2 text-xs text-emerald-800">{t("team.linkHint")}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a
+                href={whatsappHref(newLink.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 rounded-xl bg-[#25D366] px-3.5 py-2 text-sm font-semibold text-white"
+              >
+                <MessageCircle className="h-4 w-4" /> {t("team.sendWhatsapp")}
+              </a>
+              <button
+                type="button"
+                onClick={() => void copy(newLink.url)}
+                className="flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white"
+              >
+                <Copy className="h-4 w-4" /> {t("team.copyLink")}
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -227,7 +273,8 @@ function Team() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 font-bold text-slate-600">
                   {(member.name ?? member.email).charAt(0).toUpperCase()}
                 </div>
-                <div className="min-w-0 flex-1">
+                {/* Name takes the first line on phones; controls wrap below it. */}
+                <div className="min-w-0 flex-1 basis-[calc(100%-3.25rem)] sm:basis-auto">
                   <p className="truncate font-semibold text-slate-900">{member.name ?? member.email}</p>
                   <p className="truncate text-xs text-slate-500">
                     {member.status === "invited" ? t("team.pendingInvite") : member.email}
@@ -242,6 +289,16 @@ function Team() {
                   <option value="staff">{t("team.roles.staff")}</option>
                   <option value="manager">{t("team.roles.manager")}</option>
                 </select>
+                {member.inviteToken && (
+                  <button
+                    type="button"
+                    onClick={() => void copy(inviteUrl(member.inviteToken!))}
+                    aria-label={t("team.copyLink")}
+                    className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                  >
+                    <Copy className="h-4 w-4" /> {t("team.copyLink")}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => void handleRemove(member)}

@@ -11,7 +11,6 @@ import type {
   UpdateProfileInput,
 } from "../validators/auth.validator.js";
 import { activePlan } from "./billing.service.js";
-import { verifyGoogleIdToken } from "./google.service.js";
 import { sendOtp, verifyOtp } from "./otp.service.js";
 import { createSession } from "./session.service.js";
 
@@ -118,56 +117,7 @@ export async function loginWithCode(input: OtpVerifyInput, client: ClientInfo) {
 }
 
 // ============================================================
-// GOOGLE
-// ============================================================
-
-/**
- * Signs in with a Google ID token. First sign-in creates the account; an
- * existing email account with the same (Google-verified) address is linked.
- */
-export async function loginWithGoogle(idToken: string, client: ClientInfo) {
-  const profile = await verifyGoogleIdToken(idToken);
-
-  let user = await User.findOne({ googleId: profile.googleId }).lean();
-  let isNewUser = false;
-
-  if (!user) {
-    user = await User.findOneAndUpdate(
-      { email: profile.email, googleId: { $exists: false } },
-      { $set: { googleId: profile.googleId, avatarUrl: profile.avatarUrl } },
-      { returnDocument: "after" }
-    ).lean();
-  }
-
-  if (!user) {
-    try {
-      user = (
-        await User.create({
-          name: profile.name.slice(0, 50),
-          email: profile.email,
-          googleId: profile.googleId,
-          avatarUrl: profile.avatarUrl,
-        })
-      ).toObject();
-      isNewUser = true;
-    } catch (error) {
-      // Same Google account finishing sign-in twice at once.
-      if ((error as { code?: number }).code !== 11000) throw error;
-      user = await User.findOne({ googleId: profile.googleId }).lean();
-    }
-  }
-
-  if (!user) {
-    throw AppError.conflict("This email is linked to another Google account.", "GOOGLE_CONFLICT");
-  }
-
-  const tokens = await issueTokens(String(user._id), client);
-
-  return { user: await getUserById(String(user._id)), isNewUser, ...tokens };
-}
-
-// ============================================================
-// EMAIL + PASSWORD (accounts created before phone login)
+// EMAIL + PASSWORD
 // ============================================================
 
 export async function registerUser(input: RegisterInput, client: ClientInfo) {
@@ -185,6 +135,7 @@ export async function registerUser(input: RegisterInput, client: ClientInfo) {
   const user = await User.create({
     name: input.name,
     email,
+    shopName: input.shopName,
     password: await bcrypt.hash(input.password, BCRYPT_ROUNDS),
   });
 

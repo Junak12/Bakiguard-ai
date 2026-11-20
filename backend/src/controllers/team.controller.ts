@@ -14,13 +14,13 @@ import {
   submitPayment,
 } from "../services/billing.service.js";
 import {
-  acceptInvite,
   changeRole,
   countStaff,
   inviteStaff,
+  joinWithToken,
   leaveShop,
   listStaff,
-  myInvites,
+  previewInvite,
   removeStaff,
 } from "../services/staff.service.js";
 import { AppError } from "../utils/AppError.js";
@@ -65,17 +65,23 @@ export async function remove(req: AuthRequest, res: Response) {
 }
 
 // ============================================================
-// INVITES (the invited person)
+// INVITE LINKS (the invited person)
 // ============================================================
 
-export async function getMyInvites(req: AuthRequest, res: Response) {
-  res.status(200).json({ success: true, data: await myInvites(getActorId(req)) });
+const tokenParams = z.object({
+  token: z.string().regex(/^[A-Za-z0-9_-]{32}$/, "Invalid invite link"),
+});
+
+export async function getInvite(req: AuthRequest, res: Response) {
+  const { token } = tokenParams.parse(req.params);
+
+  res.status(200).json({ success: true, data: await previewInvite(token) });
 }
 
-export async function accept(req: AuthRequest, res: Response) {
-  const { id } = idParams.parse(req.params);
+export async function join(req: AuthRequest, res: Response) {
+  const { token } = tokenParams.parse(req.params);
 
-  res.status(200).json({ success: true, data: await acceptInvite(getActorId(req), id) });
+  res.status(200).json({ success: true, data: await joinWithToken(getActorId(req), token) });
 }
 
 export async function leave(req: AuthRequest, res: Response) {

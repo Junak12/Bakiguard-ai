@@ -1,6 +1,12 @@
-import { redirect } from "next/navigation";
+"use client";
 
-/** Sign-up now happens through phone login: a new number creates an account. */
+import AuthShell from "@/components/auth/AuthShell";
+import EmailPasswordForm from "@/components/auth/EmailPasswordForm";
+
 export default function RegisterPage() {
-  redirect("/login");
+  return (
+    <AuthShell>
+      <EmailPasswordForm mode="register" />
+    </AuthShell>
+  );
 }

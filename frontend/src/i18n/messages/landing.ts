@@ -9,8 +9,8 @@ export const landing = defineMessages({
     heroHighlight: "gets your money back.",
     heroText:
       "Write credit in seconds, always know who owes what, and see exactly who to collect from today. In Bangla, on your phone.",
-    heroCta: "Start free with your mobile number",
-    heroNote: "No email or password needed",
+    heroCta: "Create your free account",
+    heroNote: "Just an email and a password",
 
     demoTotal: "Total Baki",
     demoOverdue: "Overdue",
@@ -30,8 +30,8 @@ export const landing = defineMessages({
     f1Text: "See who is 1–30, 31–60 or 90+ days late at a glance.",
     f2Title: "Bangla first",
     f2Text: "The whole app in Bangla or English, with Bangla digits.",
-    f3Title: "Log in with your phone",
-    f3Text: "A 6-digit SMS code. Nothing to remember.",
+    f3Title: "Staff accounts",
+    f3Text: "Invite your staff with a link. You decide what each person can do.",
     f4Title: "AI advice",
     f4Text: "Tells you who to collect from first and who owes the most.",
     f5Title: "Correct to the taka",
@@ -51,8 +51,8 @@ export const landing = defineMessages({
     heroHighlight: "টাকা ফেরত আনে।",
     heroText:
       "কয়েক সেকেন্ডে বাকি লিখুন, কে কত টাকা দেবে সবসময় জানুন, আর আজ কার কাছ থেকে টাকা তুলবেন দেখে নিন। বাংলায়, আপনার ফোনেই।",
-    heroCta: "মোবাইল নম্বর দিয়ে ফ্রি শুরু করুন",
-    heroNote: "ইমেইল বা পাসওয়ার্ড লাগবে না",
+    heroCta: "ফ্রি অ্যাকাউন্ট খুলুন",
+    heroNote: "শুধু ইমেইল আর পাসওয়ার্ড লাগবে",
 
     demoTotal: "মোট বাকি",
     demoOverdue: "সময় পেরিয়েছে",
@@ -72,8 +72,8 @@ export const landing = defineMessages({
     f1Text: "কে ১–৩০, ৩১–৬০ বা ৯০ দিনের বেশি দেরি করছেন, এক নজরে দেখুন।",
     f2Title: "বাংলায় সবকিছু",
     f2Text: "পুরো অ্যাপ বাংলা বা ইংরেজিতে, বাংলা সংখ্যাসহ।",
-    f3Title: "ফোন নম্বর দিয়ে লগ ইন",
-    f3Text: "৬ সংখ্যার এসএমএস কোড। কিছু মনে রাখতে হবে না।",
+    f3Title: "কর্মীর অ্যাকাউন্ট",
+    f3Text: "লিংক পাঠিয়ে কর্মী যোগ করুন। কে কী করতে পারবে, আপনি ঠিক করবেন।",
     f4Title: "এআই পরামর্শ",
     f4Text: "কার কাছ থেকে আগে টাকা তুলবেন আর কার কাছে বেশি পাওনা, বলে দেয়।",
     f5Title: "টাকায় টাকায় সঠিক",

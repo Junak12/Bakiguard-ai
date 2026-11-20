@@ -38,15 +38,7 @@ export const otpVerifySchema = z.object({
 });
 
 // ------------------------------------------------------------
-// Google
-// ------------------------------------------------------------
-
-export const googleLoginSchema = z.object({
-  credential: z.string().min(20, "Missing Google credential").max(5000),
-});
-
-// ------------------------------------------------------------
-// Email + password (legacy accounts)
+// Email + password
 // ------------------------------------------------------------
 
 export const registerSchema = z.object({
@@ -58,6 +50,8 @@ export const registerSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters")
     .max(100, "Password cannot exceed 100 characters"),
+
+  shopName: shopNameSchema.optional(),
 });
 
 export const loginSchema = z.object({

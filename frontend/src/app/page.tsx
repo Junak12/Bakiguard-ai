@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   AlarmClock,
+  Users,
   ArrowRight,
   BrainCircuit,
   Calculator,
@@ -10,7 +11,6 @@ import {
   Languages,
   LockKeyhole,
   ShieldCheck,
-  Smartphone,
 } from "lucide-react";
 
 import LanguageToggle from "@/components/i18n/LanguageToggle";
@@ -22,7 +22,7 @@ export default function Home() {
   const features = [
     { icon: AlarmClock, title: t("landing.f1Title"), text: t("landing.f1Text") },
     { icon: Languages, title: t("landing.f2Title"), text: t("landing.f2Text") },
-    { icon: Smartphone, title: t("landing.f3Title"), text: t("landing.f3Text") },
+    { icon: Users, title: t("landing.f3Title"), text: t("landing.f3Text") },
     { icon: BrainCircuit, title: t("landing.f4Title"), text: t("landing.f4Text") },
     { icon: Calculator, title: t("landing.f5Title"), text: t("landing.f5Text") },
     { icon: LockKeyhole, title: t("landing.f6Title"), text: t("landing.f6Text") },
@@ -57,7 +57,7 @@ export default function Home() {
             <Link href="/login" className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900">
               {t("landing.login")}
             </Link>
-            <Link href="/login" className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
+            <Link href="/register" className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
               {t("landing.start")}
             </Link>
           </div>
@@ -79,7 +79,7 @@ export default function Home() {
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
-              href="/login"
+              href="/register"
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700"
             >
               {t("landing.heroCta")} <ArrowRight className="h-5 w-5" />
@@ -170,7 +170,7 @@ export default function Home() {
           <h2 className="text-3xl font-bold">{t("landing.ctaTitle")}</h2>
           <p className="mt-3 text-white/60">{t("landing.ctaText")}</p>
           <Link
-            href="/login"
+            href="/register"
             className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-6 py-4 font-semibold text-white hover:bg-emerald-400"
           >
             {t("landing.start")} <ArrowRight className="h-5 w-5" />

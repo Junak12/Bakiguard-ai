@@ -5,7 +5,6 @@ import { AppError } from "../utils/AppError.js";
 
 import {
   getMe,
-  googleLogin,
   login,
   logout,
   refresh,
@@ -27,14 +26,11 @@ function requirePhoneLogin(_req: Request, _res: Response, next: NextFunction) {
   next();
 }
 
-// Google (primary)
-router.post("/google", authLimiter, googleLogin);
-
 // Phone + OTP (switched off for now)
 router.post("/otp/request", requirePhoneLogin, otpSendLimiter, requestOtp);
 router.post("/otp/verify", requirePhoneLogin, authLimiter, verifyOtp);
 
-// Email + password (legacy accounts)
+// Email + password (primary)
 router.post("/register", authLimiter, register);
 router.post("/login", authLimiter, login);
 

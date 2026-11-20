@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { adoptAccountLanguage, useI18n } from "@/i18n/I18nProvider";
+import { loginUrlForHere } from "@/lib/redirect";
 import { getCurrentUser, restoreSession } from "@/lib/session";
 
 import Navbar from "./Navbar";
@@ -29,7 +30,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       if (cancelled) return;
 
       if (!signedIn) {
-        router.replace("/login");
+        // Come back here after logging in (e.g. an invite link).
+        router.replace(loginUrlForHere());
         return;
       }
 

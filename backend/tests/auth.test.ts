@@ -127,3 +127,21 @@ describe("auth", () => {
     expect(response.status).toBe(401);
   });
 });
+
+describe("registration with a shop name", () => {
+  it("stores the optional shop name", async () => {
+    const response = await api().post("/api/auth/register").send({
+      name: "Rahim",
+      email: "shop@example.com",
+      password: "strong-password-1",
+      shopName: "Rahim Store",
+    });
+
+    expect(response.status).toBe(201);
+    expect(response.body.data.user).toMatchObject({ shopName: "Rahim Store", role: "owner" });
+  });
+
+  it("no longer offers Google sign-in", async () => {
+    expect((await api().post("/api/auth/google").send({ credential: "x".repeat(40) })).status).toBe(404);
+  });
+});
