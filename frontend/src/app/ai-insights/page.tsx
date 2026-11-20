@@ -5,12 +5,14 @@ import { useEffect, useState } from "react";
 import AgingCard from "@/components/dashboard/AgingCard";
 import AIInsights from "@/components/dashboard/AIInsights";
 import OverdueCustomers from "@/components/dashboard/OverdueCustomers";
+import RiskList from "@/components/risk/RiskList";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useI18n } from "@/i18n/I18nProvider";
 import { getDashboardAIInsights, type AIDashboardInsights } from "@/lib/ai";
 import { getCustomers } from "@/lib/customer";
 import { getAgingReport, type AgingReport } from "@/lib/dashboard";
-import type { Customer } from "@/types/customer";
+import { getRiskOverview, type RiskOverviewItem } from "@/lib/risk";
+import type { Customer, RiskBand } from "@/types/customer";
 
 export default function AIInsightsPage() {
   return (
@@ -28,6 +30,9 @@ function Insights() {
   const [aiFailed, setAiFailed] = useState(false);
   const [aging, setAging] = useState<AgingReport | null>(null);
   const [overdue, setOverdue] = useState<Customer[] | null>(null);
+  const [riskItems, setRiskItems] = useState<RiskOverviewItem[] | null>(null);
+  const [riskSummary, setRiskSummary] = useState<Record<RiskBand, number> | null>(null);
+  const [riskFailed, setRiskFailed] = useState(false);
 
   useEffect(() => {
     getDashboardAIInsights()
@@ -36,6 +41,13 @@ function Insights() {
       .finally(() => setAiLoading(false));
 
     getAgingReport().then(setAging).catch(() => undefined);
+
+    getRiskOverview()
+      .then((result) => {
+        setRiskItems(result.data);
+        setRiskSummary(result.summary);
+      })
+      .catch(() => setRiskFailed(true));
 
     getCustomers({ status: "overdue" })
       .then(setOverdue)
@@ -50,8 +62,11 @@ function Insights() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <AIInsights data={ai} loading={aiLoading} failed={aiFailed} />
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <AIInsights data={ai} loading={aiLoading} failed={aiFailed} />
+          </div>
+          <RiskList items={riskItems} summary={riskSummary} failed={riskFailed} />
         </div>
 
         <div className="space-y-6">

@@ -101,6 +101,8 @@ All responses: `{ success, data?, message?, code?, errors? }`.
 | POST | `/api/customers/:id/statement-link` | New statement link (revokes the old one) |
 | GET | `/api/public/statements/:token` | Public statement (no login) |
 | POST | `/api/auth/google` | Sign in with Google (ID token) |
+| GET | `/api/risk` | All customers' risk, riskiest first |
+| GET | `/api/customers/:id/risk` | One customer's risk + credit limit |
 | GET | `/api/health`, `/api/health/ready` | Liveness / readiness |
 
 ## Roadmap
@@ -110,5 +112,7 @@ All responses: `{ success, data?, message?, code?, errors? }`.
 - **Phase 2 (done):** "Collect today" list, WhatsApp/SMS/call reminders sent from the
   owner's own phone (pre-written Bangla message, logged), shareable customer statement
   link (`/s/<token>`, revocable). Automatic SMS sending waits for an SMS provider.
-- **Phase 3:** AI risk score and credit-limit suggestions per customer
+- **Phase 3 (done):** explainable risk score per customer (on-time history, lateness,
+  recency), suggested credit limit with owner override, warning before giving risky
+  Baki, risk badges and a riskiest-customers list
 - **Phase 4:** subscriptions, multiple shops and staff, reports

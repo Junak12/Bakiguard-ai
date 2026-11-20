@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronRight, Loader2, PhoneCall, Plus, Search, UserPlus, X } from "lucide-react";
 
 import DueStatus from "@/components/customers/DueStatus";
+import RiskBadge from "@/components/risk/RiskBadge";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useI18n } from "@/i18n/I18nProvider";
 import { getCustomers, type CustomerListParams } from "@/lib/customer";
@@ -200,6 +201,10 @@ function CustomerList() {
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="text-xs text-slate-500">{customer.phone}</span>
                     <DueStatus customer={customer} />
+                    {/* Only flag what needs attention; "low"/"new" stay quiet. */}
+                    {customer.risk && (customer.risk.band === "high" || customer.risk.band === "medium") && (
+                      <RiskBadge band={customer.risk.band} />
+                    )}
                   </div>
                 </div>
 

@@ -11,6 +11,8 @@ import CustomerSummary from "@/components/customers/CustomerSummary";
 import CustomerTransactions from "@/components/customers/CustomerTransactions";
 import PaymentBehavior from "@/components/customers/PaymentBehavior";
 import ReminderPanel from "@/components/reminders/ReminderPanel";
+import RiskCard from "@/components/risk/RiskCard";
+import { useCustomerRisk } from "@/hooks/customers/useCustomerRisk";
 import TransactionModal from "@/components/customers/TransactionModal";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useCustomerDetails } from "@/hooks/customers/useCustomerDetails";
@@ -33,6 +35,9 @@ function CustomerDetails() {
     useCustomerDetails(customerId);
 
   const [entryType, setEntryType] = useState<TransactionType | null>(null);
+
+  // Re-score whenever the balance changes.
+  const risk = useCustomerRisk(customerId, `${customer?.totalDue ?? ""}-${customer?.updatedAt ?? ""}`);
 
   if (loading) return <CustomerDetailsSkeleton />;
 
@@ -74,6 +79,14 @@ function CustomerDetails() {
       {/* Re-mount after changes so "last reminded" and the link stay current. */}
       <ReminderPanel key={`${customer._id}-${customer.totalDue}`} customer={customer} />
 
+      <RiskCard
+        customerId={customer._id}
+        totalDue={customer.totalDue}
+        result={risk.result}
+        failed={risk.failed}
+        onChanged={risk.reload}
+      />
+
       <CustomerTransactions
         transactions={transactions}
         hasMore={hasMore}
@@ -87,6 +100,7 @@ function CustomerDetails() {
         <TransactionModal
           customer={customer}
           type={entryType}
+          risk={risk.result}
           onClose={() => setEntryType(null)}
           onSuccess={reload}
         />

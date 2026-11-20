@@ -1,13 +1,16 @@
 "use client";
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { HandCoins, Loader2, ShoppingBag, X } from "lucide-react";
+import { AlertTriangle, HandCoins, Loader2, ShoppingBag, X } from "lucide-react";
+
+import { useRiskText } from "@/components/risk/useRiskText";
 
 import { useSessionUser } from "@/hooks/useSessionUser";
 import { useI18n } from "@/i18n/I18nProvider";
 import { toAsciiDigits } from "@/i18n/format";
 import { notifyDashboardUpdated } from "@/lib/dashboard-events";
 import { toApiError } from "@/lib/errors";
+import type { CustomerRiskResult } from "@/lib/risk";
 import { toastSuccess } from "@/lib/toast";
 import { createTransaction } from "@/services/customer.service";
 import type { Customer } from "@/types/customer";
@@ -16,6 +19,8 @@ import type { TransactionType } from "@/types/transaction";
 interface Props {
   customer: Customer;
   type: TransactionType;
+  /** Risk + limit, for a warning before giving more Baki. */
+  risk?: CustomerRiskResult | null;
   onClose: () => void;
   onSuccess: () => Promise<void>;
 }
@@ -29,8 +34,9 @@ function isoDateIn(days: number) {
 }
 
 /** Bottom sheet on phones, centered dialog on larger screens. */
-export default function TransactionModal({ customer, type, onClose, onSuccess }: Props) {
+export default function TransactionModal({ customer, type, risk, onClose, onSuccess }: Props) {
   const { t, money, number } = useI18n();
+  const { reasonText } = useRiskText();
   const user = useSessionUser();
 
   const isCredit = type === "CREDIT";
@@ -55,6 +61,36 @@ export default function TransactionModal({ customer, type, onClose, onSuccess }:
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, submitting]);
+
+  /** Warn (never block) when this credit looks risky. */
+  function creditWarning(): string | null {
+    if (!isCredit || !risk?.risk) return null;
+
+    const typed = Number(toAsciiDigits(amount).replace(/[,\s]/g, ""));
+    const value = Number.isInteger(typed) && typed > 0 ? typed : 0;
+    const band = risk.risk.band;
+
+    if (band === "high" && risk.creditLimit === null && risk.risk.suggestedLimit === 0) {
+      return t("risk.warnStop", { name: customer.name });
+    }
+
+    if (risk.effectiveLimit !== null && value > 0 && customer.totalDue + value > risk.effectiveLimit) {
+      return t("risk.warnOverLimit", {
+        name: customer.name,
+        balance: money(customer.totalDue + value),
+        limit: money(risk.effectiveLimit),
+      });
+    }
+
+    if (band === "high") {
+      const reason = risk.risk.reasons.filter((r) => r.impact < 0).map(reasonText).find(Boolean);
+      return t("risk.warnHigh", { name: customer.name, reason: reason ?? t("risk.bands.high") });
+    }
+
+    return null;
+  }
+
+  const warning = creditWarning();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -252,6 +288,16 @@ export default function TransactionModal({ customer, type, onClose, onSuccess }:
             className={`mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4 ${accent.ring}`}
           />
         </label>
+
+        {warning && (
+          <div role="status" className="mt-4 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-900">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <div>
+              <p className="font-medium">{warning}</p>
+              <p className="mt-0.5 text-xs text-amber-800/80">{t("risk.warnProceed")}</p>
+            </div>
+          </div>
+        )}
 
         {error && <p role="alert" className="mt-4 text-sm text-red-600">{error}</p>}
 

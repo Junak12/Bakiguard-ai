@@ -1,5 +1,22 @@
 export type AgingBucket = "notDue" | "d1_30" | "d31_60" | "d61_90" | "d90plus";
 
+export type RiskBand = "new" | "low" | "medium" | "high";
+
+export interface RiskReason {
+  code: string;
+  params: Record<string, string | number>;
+  /** +1 helps, -1 hurts. */
+  impact: -1 | 1;
+}
+
+export interface CustomerRisk {
+  score: number;
+  band: RiskBand;
+  suggestedLimit: number;
+  reasons: RiskReason[];
+  updatedAt: string;
+}
+
 export type AgingBuckets = Record<AgingBucket, { amount: number; customers: number }>;
 
 export interface Customer {
@@ -18,6 +35,12 @@ export interface Customer {
   lastCreditAt?: string;
   lastPaymentAt?: string;
   lastRemindedAt?: string | null;
+
+  /** Owner-set credit limit; null = use the suggested limit. */
+  creditLimit?: number | null;
+
+  /** Latest stored risk assessment (for list badges). */
+  risk?: CustomerRisk | null;
 
   /** Secret for the customer's public statement link (/s/<token>). */
   statementToken?: string;

@@ -8,10 +8,11 @@ import { dashboard } from "./dashboard";
 import { landing } from "./landing";
 import { nav } from "./nav";
 import { pwa } from "./pwa";
+import { risk } from "./risk";
 import { settings } from "./settings";
 import { transactions } from "./transactions";
 
-const areas = { common, nav, auth, pwa, settings, dashboard, ai, customers, transactions, landing, collections, reminders, statement };
+const areas = { common, nav, auth, pwa, settings, dashboard, ai, customers, transactions, landing, collections, reminders, statement, risk };
 
 type Areas = typeof areas;
 
