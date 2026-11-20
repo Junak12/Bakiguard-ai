@@ -9,6 +9,7 @@ import type {
   CreateTransactionInput,
   TransactionFilters,
 } from "../validators/transaction.validator.js";
+import { refreshRiskInBackground } from "./risk.service.js";
 import {
   addDays,
   LEGACY_CREDIT_DAYS,
@@ -108,6 +109,9 @@ export async function createTransaction(
 
       await refreshNextDue(userId, input.customerId, session);
     });
+
+    // Payment behaviour changed: re-score this customer (doesn't delay the response).
+    refreshRiskInBackground(userId, input.customerId);
 
     return created!;
   } finally {

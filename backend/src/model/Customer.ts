@@ -2,6 +2,16 @@ import crypto from "node:crypto";
 
 import mongoose, { Document, Schema } from "mongoose";
 
+export type RiskBand = "new" | "low" | "medium" | "high";
+
+export interface CustomerRiskSnapshot {
+  score: number;
+  band: RiskBand;
+  suggestedLimit: number;
+  reasons: { code: string; params: Record<string, unknown>; impact: -1 | 1 }[];
+  updatedAt: Date;
+}
+
 export function newStatementToken() {
   return crypto.randomBytes(24).toString("base64url");
 }
@@ -28,6 +38,12 @@ export interface ICustomer extends Document {
   statementToken?: string;
 
   lastRemindedAt?: Date | null;
+
+  /** Limit set by the shop owner; null = use the suggested limit. */
+  creditLimit?: number | null;
+
+  /** Latest risk assessment (refreshed after every transaction). */
+  risk?: CustomerRiskSnapshot | null;
 
   /**
    * Customers are never hard-deleted: their ledger history must survive.
@@ -89,6 +105,26 @@ const customerSchema = new Schema<ICustomer>(
 
     lastRemindedAt: {
       type: Date,
+      default: null,
+    },
+
+    creditLimit: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+
+    risk: {
+      type: new Schema(
+        {
+          score: Number,
+          band: { type: String, enum: ["new", "low", "medium", "high"] },
+          suggestedLimit: Number,
+          reasons: [{ _id: false, code: String, params: Schema.Types.Mixed, impact: Number }],
+          updatedAt: Date,
+        },
+        { _id: false }
+      ),
       default: null,
     },
 

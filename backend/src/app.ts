@@ -14,6 +14,7 @@ import collectionRoutes from "./routes/collection.routes.js";
 import customerRoutes from "./routes/customer.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import publicRoutes from "./routes/public.routes.js";
+import riskRoutes from "./routes/risk.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js";
 import { logger } from "./utils/logger.js";
 
@@ -72,6 +73,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/collections", collectionRoutes);
 app.use("/api/public", publicRoutes);
+app.use("/api/risk", riskRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

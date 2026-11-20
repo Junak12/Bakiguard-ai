@@ -12,6 +12,7 @@ import {
   getReminders,
   rotateStatementLink,
 } from "../controllers/collection.controller.js";
+import { getOne as getRisk } from "../controllers/risk.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -27,5 +28,6 @@ router.delete("/:id", remove);
 router.get("/:id/reminders", getReminders);
 router.post("/:id/reminders", createReminder);
 router.post("/:id/statement-link", rotateStatementLink);
+router.get("/:id/risk", getRisk);
 
 export default router;

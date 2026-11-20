@@ -21,6 +21,15 @@ export const createCustomerSchema = z.object({
 });
 
 export const updateCustomerSchema = createCustomerSchema
+  .extend({
+    // null clears the owner's limit (back to the suggested one).
+    creditLimit: z
+      .number()
+      .int("Limit must be a whole number of Taka")
+      .min(0)
+      .max(100_000_000)
+      .nullable(),
+  })
   .partial()
   .refine((value) => Object.keys(value).length > 0, {
     message: "Nothing to update",

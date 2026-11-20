@@ -25,6 +25,9 @@ export interface ITransaction extends Document {
    */
   outstanding?: number;
 
+  /** CREDIT only: when the last taka of this credit was paid. */
+  settledAt?: Date;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -71,6 +74,8 @@ const transactionSchema = new Schema<ITransaction>(
       type: Number,
       min: 0,
     },
+
+    settledAt: Date,
   },
   {
     timestamps: true,

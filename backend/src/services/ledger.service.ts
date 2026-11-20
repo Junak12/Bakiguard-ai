@@ -30,18 +30,24 @@ export async function settleCreditsFifo(
     { session }
   ).sort({ createdAt: 1, _id: 1 });
 
+  const now = new Date();
   const updates = [];
 
   for (const credit of openCredits) {
     if (remaining <= 0) break;
 
-    const applied = Math.min(credit.outstanding ?? 0, remaining);
+    const outstanding = credit.outstanding ?? 0;
+    const applied = Math.min(outstanding, remaining);
     remaining -= applied;
 
     updates.push({
       updateOne: {
         filter: { _id: credit._id },
-        update: { $inc: { outstanding: -applied } },
+        update: {
+          $inc: { outstanding: -applied },
+          // Fully paid off: remember when, for on-time payment history.
+          ...(applied === outstanding ? { $set: { settledAt: now } } : {}),
+        },
       },
     });
   }
@@ -74,15 +80,25 @@ export async function refreshNextDue(
 }
 
 /**
- * One-time conversion of ledgers recorded before due dates existed:
- * replays each affected customer's history to work out what is still unpaid.
- * Idempotent: only customers with credits missing `outstanding` are touched.
+ * One-time conversion of older ledgers: replays each affected customer's
+ * history (FIFO) to work out what is still unpaid on every credit, and when
+ * each fully-paid credit was settled.
+ * Idempotent: only customers with credits missing `outstanding`, or paid-off
+ * credits missing `settledAt`, are touched.
  */
 export async function backfillLedgers() {
   const pending = await Transaction.aggregate<{
     _id: { userId: mongoose.Types.ObjectId; customerId: mongoose.Types.ObjectId };
   }>([
-    { $match: { type: "CREDIT", outstanding: { $exists: false } } },
+    {
+      $match: {
+        type: "CREDIT",
+        $or: [
+          { outstanding: { $exists: false } },
+          { outstanding: 0, settledAt: { $exists: false } },
+        ],
+      },
+    },
     { $group: { _id: { userId: "$userId", customerId: "$customerId" } } },
   ]);
 
@@ -94,50 +110,59 @@ export async function backfillLedgers() {
       .sort({ createdAt: 1, _id: 1 })
       .lean();
 
-    const open: { id: mongoose.Types.ObjectId; outstanding: number }[] = [];
-    const finalOutstanding = new Map<string, number>();
+    const credits = new Map<string, { outstanding: number; settledAt: Date | null }>();
+    const open: string[] = [];
 
     for (const entry of history) {
+      const id = entry._id.toString();
+
       if (entry.type === "CREDIT") {
-        open.push({ id: entry._id, outstanding: entry.amount });
+        credits.set(id, { outstanding: entry.amount, settledAt: null });
+        open.push(id);
         continue;
       }
 
       let remaining = entry.amount;
 
-      for (const credit of open) {
-        if (remaining <= 0) break;
+      while (remaining > 0 && open.length > 0) {
+        const credit = credits.get(open[0])!;
         const applied = Math.min(credit.outstanding, remaining);
         credit.outstanding -= applied;
         remaining -= applied;
-      }
-    }
 
-    for (const credit of open) {
-      finalOutstanding.set(credit.id.toString(), credit.outstanding);
+        if (credit.outstanding === 0) {
+          credit.settledAt = entry.createdAt;
+          open.shift();
+        }
+      }
     }
 
     await Transaction.bulkWrite(
       history
         .filter((entry) => entry.type === "CREDIT")
-        .map((entry) => ({
-          updateOne: {
-            filter: { _id: entry._id },
-            update: {
-              $set: {
-                outstanding: finalOutstanding.get(entry._id.toString()) ?? 0,
-                dueDate: entry.dueDate ?? addDays(entry.createdAt, LEGACY_CREDIT_DAYS),
+        .map((entry) => {
+          const replayed = credits.get(entry._id.toString())!;
+
+          return {
+            updateOne: {
+              filter: { _id: entry._id },
+              update: {
+                $set: {
+                  outstanding: replayed.outstanding,
+                  dueDate: entry.dueDate ?? addDays(entry.createdAt, LEGACY_CREDIT_DAYS),
+                  ...(replayed.settledAt ? { settledAt: replayed.settledAt } : {}),
+                },
               },
             },
-          },
-        }))
+          };
+        })
     );
 
     await refreshNextDue(String(_id.userId), String(_id.customerId));
   }
 
   if (pending.length > 0) {
-    logger.info({ customers: pending.length }, "Backfilled credit due dates and balances");
+    logger.info({ customers: pending.length }, "Backfilled credit balances and settlement dates");
   }
 }
 

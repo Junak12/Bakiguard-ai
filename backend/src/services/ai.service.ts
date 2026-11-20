@@ -10,7 +10,7 @@ import { getAgingReport } from "./ledger.service.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const aiClient = axios.create({
+export const aiClient = axios.create({
   baseURL: env.AI_SERVICE_URL,
   timeout: env.AI_SERVICE_TIMEOUT_MS,
   headers: env.AI_SERVICE_API_KEY

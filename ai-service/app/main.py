@@ -1,6 +1,7 @@
 from fastapi import Depends, FastAPI
 
 from app.routes.insight_routes import router as insight_router
+from app.routes.risk_routes import router as risk_router
 from app.utils import config
 from app.utils.security import require_api_key
 
@@ -21,6 +22,14 @@ app.include_router(
     insight_router,
     prefix="/api/ai",
     tags=["AI Insights"],
+    dependencies=[Depends(require_api_key)],
+)
+
+
+app.include_router(
+    risk_router,
+    prefix="/api/ai",
+    tags=["Customer risk"],
     dependencies=[Depends(require_api_key)],
 )
 
