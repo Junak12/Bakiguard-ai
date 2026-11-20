@@ -1,6 +1,6 @@
 import type { Response } from "express";
 
-import { getUserId, type AuthRequest } from "../middleware/auth.middleware.js";
+import { getActorId, getUserId, type AuthRequest } from "../middleware/auth.middleware.js";
 import {
   createTransaction,
   getCustomerTransactions,
@@ -16,7 +16,7 @@ import {
 export async function create(req: AuthRequest, res: Response) {
   const input = createTransactionSchema.parse(req.body);
 
-  const transaction = await createTransaction(getUserId(req), input);
+  const transaction = await createTransaction(getUserId(req), input, getActorId(req));
 
   res.status(201).json({
     success: true,

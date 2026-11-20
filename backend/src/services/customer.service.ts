@@ -1,5 +1,6 @@
 import { Customer } from "../model/Customer.js";
 import { AppError } from "../utils/AppError.js";
+import { assertCanAddCustomer } from "./billing.service.js";
 import { getAgingReport } from "./ledger.service.js";
 import type {
   CreateCustomerInput,
@@ -28,6 +29,8 @@ const activeCustomer = (userId: string, customerId?: string) => ({
 });
 
 export async function createCustomer(userId: string, input: CreateCustomerInput) {
+  await assertCanAddCustomer(userId);
+
   try {
     return await Customer.create({
       userId,

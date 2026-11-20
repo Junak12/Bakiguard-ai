@@ -38,7 +38,8 @@ function paginationMeta({ page, limit }: Pagination, total: number) {
  */
 export async function createTransaction(
   userId: string,
-  input: CreateTransactionInput
+  input: CreateTransactionInput,
+  actorId: string = userId
 ) {
   const session = await mongoose.startSession();
 
@@ -97,6 +98,7 @@ export async function createTransaction(
             type: input.type,
             amount: input.amount,
             description: input.description,
+            createdBy: actorId,
             ...(isPayment ? {} : { dueDate, outstanding: input.amount }),
           },
         ],
@@ -140,6 +142,7 @@ export async function getCustomerTransactions(
       .sort({ createdAt: -1 })
       .skip((pagination.page - 1) * pagination.limit)
       .limit(pagination.limit)
+      .populate({ path: "createdBy", select: "name" })
       .select("-__v")
       .lean(),
 
@@ -224,6 +227,7 @@ export async function getTransactions(
       .skip((pagination.page - 1) * pagination.limit)
       .limit(pagination.limit)
       .populate({ path: "customerId", select: "name phone" })
+      .populate({ path: "createdBy", select: "name" })
       .select("-__v")
       .lean(),
 

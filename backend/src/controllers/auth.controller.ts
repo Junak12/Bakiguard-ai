@@ -1,7 +1,7 @@
 import type { CookieOptions, Request, Response } from "express";
 
 import { env } from "../config/env.js";
-import { getUserId, type AuthRequest } from "../middleware/auth.middleware.js";
+import { getActorId, type AuthRequest } from "../middleware/auth.middleware.js";
 import {
   getUserById,
   loginUser,
@@ -180,7 +180,7 @@ export async function logout(req: Request, res: Response) {
 }
 
 export async function getMe(req: AuthRequest, res: Response) {
-  const user = await getUserById(getUserId(req));
+  const user = await getUserById(getActorId(req));
 
   res.status(200).json({
     success: true,
@@ -191,7 +191,7 @@ export async function getMe(req: AuthRequest, res: Response) {
 export async function updateMe(req: AuthRequest, res: Response) {
   const input = updateProfileSchema.parse(req.body);
 
-  const user = await updateProfile(getUserId(req), input);
+  const user = await updateProfile(getActorId(req), req.role ?? "owner", input);
 
   res.status(200).json({
     success: true,

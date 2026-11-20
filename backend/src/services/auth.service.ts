@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 
+import { Membership, type ShopRole } from "../model/Membership.js";
 import { User, type IUser } from "../model/User.js";
 import { AppError } from "../utils/AppError.js";
 import { generateAccessToken } from "../utils/jwt.js";
@@ -9,6 +10,7 @@ import type {
   RegisterInput,
   UpdateProfileInput,
 } from "../validators/auth.validator.js";
+import { activePlan } from "./billing.service.js";
 import { verifyGoogleIdToken } from "./google.service.js";
 import { sendOtp, verifyOtp } from "./otp.service.js";
 import { createSession } from "./session.service.js";
@@ -112,7 +114,7 @@ export async function loginWithCode(input: OtpVerifyInput, client: ClientInfo) {
 
   const tokens = await issueTokens(String(user!._id), client);
 
-  return { user: toPublicUser(user!), isNewUser, ...tokens };
+  return { user: await getUserById(String(user!._id)), isNewUser, ...tokens };
 }
 
 // ============================================================
@@ -161,7 +163,7 @@ export async function loginWithGoogle(idToken: string, client: ClientInfo) {
 
   const tokens = await issueTokens(String(user._id), client);
 
-  return { user: toPublicUser(user), isNewUser, ...tokens };
+  return { user: await getUserById(String(user._id)), isNewUser, ...tokens };
 }
 
 // ============================================================
@@ -188,7 +190,7 @@ export async function registerUser(input: RegisterInput, client: ClientInfo) {
 
   const tokens = await issueTokens(user._id.toString(), client);
 
-  return { user: toPublicUser(user), ...tokens };
+  return { user: await getUserById(String(user._id)), ...tokens };
 }
 
 export async function loginUser(input: LoginInput, client: ClientInfo) {
@@ -210,26 +212,62 @@ export async function loginUser(input: LoginInput, client: ClientInfo) {
 
   const tokens = await issueTokens(user._id.toString(), client);
 
-  return { user: toPublicUser(user), ...tokens };
+  return { user: await getUserById(String(user._id)), ...tokens };
 }
 
 // ============================================================
 // PROFILE
 // ============================================================
 
-export async function getUserById(userId: string) {
-  const user = await User.findById(userId).lean();
+/** Fields that describe the SHOP; only the owner may change them. */
+const SHOP_FIELDS = ["shopName", "paymentInfo", "defaultCreditDays"] as const;
+
+/**
+ * The signed-in person as the app sees them: their own name/language plus the
+ * shop they work in (its name, payment info, credit term, plan) and their role.
+ */
+export async function getUserById(actorId: string) {
+  const user = await User.findById(actorId).lean();
 
   if (!user) {
     throw AppError.notFound("User not found");
   }
 
-  return toPublicUser(user);
+  const membership = await Membership.findOne(
+    { userId: actorId, status: "active" },
+    { shopId: 1, role: 1 }
+  ).lean();
+
+  const shop = membership ? await User.findById(membership.shopId).lean() : user;
+
+  if (!shop) {
+    throw AppError.notFound("Shop not found");
+  }
+
+  const role: ShopRole = membership ? membership.role : "owner";
+
+  return {
+    ...toPublicUser(user),
+    role,
+    shopId: String(shop._id),
+    ownerName: shop.name,
+    shopName: shop.shopName ?? null,
+    paymentInfo: shop.paymentInfo ?? null,
+    defaultCreditDays: shop.defaultCreditDays ?? 30,
+    plan: activePlan(shop),
+    planExpiresAt: shop.planExpiresAt ?? null,
+  };
 }
 
-export async function updateProfile(userId: string, input: UpdateProfileInput) {
+export type SessionUser = Awaited<ReturnType<typeof getUserById>>;
+
+export async function updateProfile(actorId: string, role: ShopRole, input: UpdateProfileInput) {
+  if (role !== "owner" && SHOP_FIELDS.some((field) => field in input)) {
+    throw AppError.forbidden("Only the shop owner can change shop settings.");
+  }
+
   const user = await User.findByIdAndUpdate(
-    userId,
+    actorId,
     { $set: input },
     { returnDocument: "after", runValidators: true }
   ).lean();
@@ -238,5 +276,5 @@ export async function updateProfile(userId: string, input: UpdateProfileInput) {
     throw AppError.notFound("User not found");
   }
 
-  return toPublicUser(user);
+  return getUserById(actorId);
 }

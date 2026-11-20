@@ -25,6 +25,9 @@ export interface ITransaction extends Document {
    */
   outstanding?: number;
 
+  /** The person who entered it (owner or staff). */
+  createdBy?: mongoose.Types.ObjectId;
+
   /** CREDIT only: when the last taka of this credit was paid. */
   settledAt?: Date;
 
@@ -76,6 +79,11 @@ const transactionSchema = new Schema<ITransaction>(
     },
 
     settledAt: Date,
+
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   {
     timestamps: true,

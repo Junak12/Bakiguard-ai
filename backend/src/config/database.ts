@@ -1,7 +1,9 @@
 import mongoose from "mongoose";
 
 import { Customer, newStatementToken } from "../model/Customer.js";
+import { Membership } from "../model/Membership.js";
 import { Otp } from "../model/Otp.js";
+import { Payment } from "../model/Payment.js";
 import { Reminder } from "../model/Reminder.js";
 import { Session } from "../model/Session.js";
 import { Transaction } from "../model/Transaction.js";
@@ -49,7 +51,7 @@ export async function prepareDatabase() {
 
   // Creates missing indexes and drops ones no longer in the schemas
   // (e.g. the old non-partial userId+phone unique index).
-  for (const model of [User, Session, Otp, Customer, Transaction, Reminder]) {
+  for (const model of [User, Session, Otp, Customer, Transaction, Reminder, Membership, Payment]) {
     await model.syncIndexes();
   }
 

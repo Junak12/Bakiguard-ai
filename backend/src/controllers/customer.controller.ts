@@ -1,6 +1,7 @@
 import type { Response } from "express";
 
 import { getUserId, type AuthRequest } from "../middleware/auth.middleware.js";
+import { AppError } from "../utils/AppError.js";
 import {
   archiveCustomer,
   createCustomer,
@@ -52,6 +53,10 @@ export async function getOne(req: AuthRequest, res: Response) {
 export async function update(req: AuthRequest, res: Response) {
   const { id } = idParamSchema.parse(req.params);
   const input = updateCustomerSchema.parse(req.body);
+
+  if (input.creditLimit !== undefined && req.role === "staff") {
+    throw AppError.forbidden("Only the owner or a manager can change credit limits.");
+  }
 
   const customer = await updateCustomer(getUserId(req), id, input);
 

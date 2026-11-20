@@ -29,6 +29,10 @@ export interface IUser extends Document {
   /** Days until a new credit is due, unless a due date is given. */
   defaultCreditDays: number;
 
+  /** Paid plan and when it lapses back to Free (null = never paid). */
+  plan: "free" | "pro";
+  planExpiresAt?: Date | null;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -84,6 +88,17 @@ const userSchema = new Schema<IUser>(
       type: String,
       enum: LANGUAGES,
       default: "bn",
+    },
+
+    plan: {
+      type: String,
+      enum: ["free", "pro"],
+      default: "free",
+    },
+
+    planExpiresAt: {
+      type: Date,
+      default: null,
     },
 
     defaultCreditDays: {

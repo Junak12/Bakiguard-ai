@@ -53,6 +53,8 @@ services:
       AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY}
       TRUST_PROXY: ${TRUST_PROXY:-0}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      BILLING_BKASH_NUMBER: ${BILLING_BKASH_NUMBER:-}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
       PHONE_LOGIN_ENABLED: ${PHONE_LOGIN_ENABLED:-false}
       SMS_PROVIDER: ${SMS_PROVIDER:-console}
       # Local demo only: login codes appear in `docker compose logs backend`.

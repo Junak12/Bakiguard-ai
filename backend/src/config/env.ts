@@ -62,6 +62,12 @@ const envSchema = z.object({
   // OAuth client ID(s) from Google Cloud Console (comma-separated).
   // Empty disables "Sign in with Google".
   GOOGLE_CLIENT_ID: z.string().default(""),
+
+  // bKash number shop owners send subscription payments to (shown on the Upgrade page).
+  BILLING_BKASH_NUMBER: z.string().default(""),
+
+  // Secret for the admin endpoints that approve payments. Empty disables them.
+  ADMIN_API_KEY: z.string().default(""),
 });
 
 const parsed = envSchema.safeParse(process.env);
